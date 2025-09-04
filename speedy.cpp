@@ -1,0 +1,149 @@
+#include "client.h"
+#include "graphics.h"
+
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+Graphics* g;
+Client* client;
+
+constexpr int LINE_HEIGHT = 16;
+constexpr int LINE_SPACING = 8; // the space in between lines
+constexpr int LINE_SPACING_AND_HEIGHT = 24;
+constexpr int ONE_HALF_LINE_SPACING = LINE_SPACING / 2;
+constexpr int MAX_CHARS_PER_LINE = 30;
+int client_width;
+int client_height;
+constexpr int SPACING_LEFT = 64;
+
+bool show_cursor;
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+int CALLBACK WinMain(
+	HINSTANCE hInstance,
+	HINSTANCE hPrevInstance,
+	LPSTR lpCmdLine,
+	int nCmdShow)
+	{
+		WNDCLASSEXW window{};
+		window.hInstance = hInstance;
+		window.lpszClassName = L"mainwin";
+		window.lpfnWndProc = WndProc;
+		window.cbSize = sizeof(window);
+		window.style = CS_OWNDC;
+		window.cbClsExtra = 0;
+		window.cbWndExtra = 0;
+	window.hIcon = nullptr;
+	window.hCursor = nullptr;
+	window.lpszMenuName = nullptr;
+	window.hIconSm = nullptr;
+	RegisterClassExW(&window);
+	
+	RECT client_region = { 0, 0, STARTING_SCREEN_WIDTH, STARTING_SCREEN_HEIGHT };
+	AdjustWindowRectEx(&client_region, WS_CAPTION | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_BORDER | WS_SIZEBOX, FALSE, 0);
+	
+	HWND hWnd = CreateWindowExW(
+		0,
+		L"mainwin",
+		L"Speedy",
+		WS_CAPTION | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_BORDER | WS_SIZEBOX,
+		75, 25, client_region.right - client_region.left, client_region.bottom - client_region.top,
+		nullptr,
+		nullptr,
+		hInstance,
+		nullptr
+	);
+	
+	g = new Graphics();
+	client = new Client();
+	client->open_file("test.txt");
+	
+	if (!g->Init(hWnd))
+	{
+		delete g;
+		std::cerr << "An error occured while initializing the graphics object\n";
+		return -1;
+	}
+	
+	client_width = STARTING_SCREEN_WIDTH;
+	client_height = STARTING_SCREEN_HEIGHT;
+	
+	
+	
+	ShowWindow(hWnd, SW_SHOW);
+	UpdateWindow(hWnd);
+	
+	MSG msg;
+	BOOL gResult;
+	
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wparentheses"
+	while (gResult = GetMessage(&msg, nullptr, 0, 0) > 0)
+	#pragma GCC diagnostic pop
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+	if (gResult == -1) {
+		delete g;
+		delete client;
+		std::cerr << "An error occured while running the message loop\n";
+		return -1;
+	}
+	delete g;
+	delete client;
+	return (int)msg.wParam;
+}
+#pragma GCC diagnostic pop
+
+
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch (uMsg)
+	{
+		case WM_SIZE:
+		client_width = *(short*)&lParam;
+		client_height = *((short*)&lParam + 1);
+		g->Resize(client_width, client_height);
+		return 0;
+	case WM_TIMER:
+		if (wParam == 1)
+		{
+            show_cursor = !show_cursor;
+            InvalidateRect(hWnd, NULL, TRUE);
+		}
+		return 0;
+	case WM_DESTROY:
+	case WM_CLOSE:
+		PostQuitMessage(0);
+		return 0;
+	case WM_SYSKEYDOWN:
+		if (wParam == VK_MENU)
+			client->enter_command_mode();
+		return 0;
+	case WM_SYSKEYUP:
+		if (wParam == VK_MENU)
+			client->exit_command_mode();
+		return 0;
+	case WM_CHAR:
+    std::cout << (char)wParam;
+		client->process_character(static_cast<char>(wParam));
+
+		InvalidateRect(hWnd, NULL, TRUE);
+		return 0;
+	case WM_KEYDOWN:
+		client->process_special_key(static_cast<char>(wParam));
+		InvalidateRect(hWnd, NULL, TRUE);
+		return 0;
+	case WM_PAINT:
+		g->BeginDraw();
+		g->ClearScreen(1.0f, 1.0f, 1.0f);
+		client->draw(g);
+		g->EndDraw();
+		return DefWindowProc(hWnd, uMsg, wParam, lParam);
+	default:
+		return DefWindowProcW(hWnd, uMsg, wParam, lParam);
+	}
+
+}
