@@ -1,8 +1,10 @@
 #pragma once
 
+#include <deque>
 #include <string>
 #include <vector>
 
+#include "edit.h"
 #include "graphics.h"
 
 class OpenedFile {
@@ -24,12 +26,14 @@ public:
     /// @param character The character to insert.
     /// @param char_position The character position within the line where the character should be inserted.
     /// @param line_number The line number where the character should be inserted.
-    void insert_character(char character, int line_number = -1, int char_position = -1);
+    void insert_character(char character, int line_number = -1, int char_position = -1, bool move_cursor = true);
 
     /// @brief Deletes a character at the specified line and character position. If no parameters are provided, deletes at the current position. Updates current position accordingly.
     /// @param line_number The line number from which the character should be deleted.
     /// @param char_position The character position within the line to delete.
-    void delete_character(int line_number = -1, int char_position = -1);
+    void delete_character(int line_number = -1, int char_position = -1, bool move_cursor = true);
+
+    bool undo();
 
 
     // Getters and setters
@@ -65,5 +69,8 @@ private:
 
     /// @brief Indicates whether the file is successfully opened.
     bool open;
+
+    /// @brief A deque storing the history of edit actions for undo functionality.
+    std::deque<Edit> past_actions;
 
 };

@@ -6,7 +6,7 @@
 #include <iostream>
 
 OpenedFile::OpenedFile(const std::string& path)
-    : file_path(path), current_line(0), current_character(0), open(false) {
+    : file_path(path), current_line(0), current_character(0), open(false), past_actions() {
     std::wifstream file(file_path);
 
     // Open the file and read its contents into the lines vector.
@@ -58,18 +58,40 @@ void OpenedFile::new_line(int line_number, int character_position, bool move_cur
     }
 }
 
-void OpenedFile::insert_character(char character, int line_number, int char_position) {
+void OpenedFile::insert_character(char character, int line_number, int char_position, bool move_cursor) {
     if (line_number == -1) {
         line_number = current_line;
     }
     if (char_position == -1) {
         char_position = current_character;
     }
-    lines[line_number].insert(lines[line_number].begin() + char_position, character);
-    current_character = char_position + 1;
+    
+    past_actions.push_back(Edit(
+        [this, line_number, char_position, character, move_cursor]() {
+            this->lines[line_number].insert(this->lines[line_number].begin() + char_position, character);
+            if (move_cursor) {
+                this->current_line = line_number;
+                this->current_character = char_position + 1;
+            }
+            return true;
+        },
+        [this, line_number, char_position, move_cursor]() {
+            this->lines[line_number].erase(this->lines[line_number].begin() + char_position);
+            if (move_cursor) {
+                this->current_line = line_number;
+                this->current_character = char_position;
+            }
+            return true;
+        }
+    ));
+
+    past_actions.back().edit();
+    if (static_cast<int>(past_actions.size()) > Config::get_instance()->get_undo_history_size()) {
+        past_actions.pop_front();
+    }
 }
 
-void OpenedFile::delete_character(int line_number, int char_position) {
+void OpenedFile::delete_character(int line_number, int char_position, bool move_cursor) {
     if (line_number == -1) {
         line_number = current_line;
     }
@@ -81,15 +103,65 @@ void OpenedFile::delete_character(int line_number, int char_position) {
             return; // Can't delete before the start of the file
         }
         // Merge with previous line
-        int prev_line_length = static_cast<int>(lines[line_number - 1].length());
-        lines[line_number - 1] += lines[line_number];
-        lines.erase(lines.begin() + line_number);
-        current_line = line_number - 1;
-        current_character = prev_line_length;
+        past_actions.push_back(Edit(
+            [this, line_number, move_cursor]() {
+                int prev_line_length = static_cast<int>(lines[line_number - 1].length());
+                lines[line_number - 1] += lines[line_number];
+                lines.erase(lines.begin() + line_number);
+                if (move_cursor) {
+                    current_line = line_number - 1;
+                    current_character = prev_line_length;
+                }
+                return true;
+            },
+            [this, line_number, move_cursor]() {
+                std::wstring merged_part = lines[line_number - 1].substr(lines[line_number - 1].length() - lines[line_number].length());
+                lines.insert(lines.begin() + line_number, merged_part);
+                lines[line_number - 1] = lines[line_number - 1].substr(0, lines[line_number - 1].length() - merged_part.length());
+                if (move_cursor) {
+                    current_line = line_number;
+                    current_character = 0;
+                }
+                return true;
+            }
+        ));
+        past_actions.back().edit();
+        if (static_cast<int>(past_actions.size()) > Config::get_instance()->get_undo_history_size()) {
+            past_actions.pop_front();
+        }
         return;
+    } else {
+        wchar_t deleted_char = lines[line_number][char_position - 1];
+        past_actions.push_back(Edit(
+            [this, line_number, char_position, move_cursor]() {
+                this->lines[line_number].erase(this->lines[line_number].begin() + char_position - 1);
+                if (move_cursor) {
+                    this->current_line = line_number;
+                    this->current_character = char_position - 1;
+                }
+                return true;
+            },
+            [this, line_number, char_position, move_cursor, deleted_char]() {
+                this->lines[line_number].insert(this->lines[line_number].begin() + char_position - 1, deleted_char);
+                if (move_cursor) {
+                    this->current_line = line_number;
+                    this->current_character = char_position;
+                }
+                return true;
+            }
+        ));
     }
     lines[line_number].erase(lines[line_number].begin() + char_position - 1);
     current_character = char_position - 1;
+}
+
+bool OpenedFile::undo() {
+    if (past_actions.empty()) {
+        return false;
+    }
+    bool result = past_actions.back().undo();
+    past_actions.pop_back();
+    return result;
 }
 
 void OpenedFile::draw(Graphics* g, int start_x, int start_y, int max_chars_per_line, int max_lines) const {

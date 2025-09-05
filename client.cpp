@@ -80,6 +80,9 @@ void Client::process_special_key(const char key) {
             save_file();
             break;
         case 'Z': // Undo
+            if (!working_file.undo()) {
+                MessageBeep(MB_ICONERROR);
+            }
             break;
         case 'Y': // Redo
             break;
@@ -110,5 +113,5 @@ void Client::save_file() const {
 }
 
 void Client::close_file(int file_id) {
-    
+
 }

@@ -4,7 +4,7 @@ CXXFLAGS := -Wall -Wextra -std=c++17
 LDFLAGS := -ld2d1 -ldwrite
 
 # Files
-SRCS := speedy.cpp graphics.cpp client.cpp opened_file.cpp config.cpp
+SRCS := speedy.cpp graphics.cpp client.cpp opened_file.cpp config.cpp edit.cpp
 OBJS := $(SRCS:.cpp=.o)
 TARGET := Speedy.exe
 

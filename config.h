@@ -57,6 +57,8 @@ public:
     inline void set_last_opened_file(const std::string& file) { last_opened_file = file; }
     inline std::string get_working_directory() const { return working_directory; }
     inline void set_working_directory(const std::string& directory) { working_directory = directory; }
+    inline int get_undo_history_size() const { return undo_history_size; }
+    inline void set_undo_history_size(const int size) { undo_history_size = size; }
 
 private:
     Config(); // Private constructor to prevent instantiation.
@@ -81,4 +83,6 @@ private:
     std::vector<std::string> recent_files;
     std::string last_opened_file;
     std::string working_directory;
+
+    int undo_history_size;
 };

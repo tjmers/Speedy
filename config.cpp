@@ -19,7 +19,8 @@ Config::Config() :
     text_color(D2D1::ColorF(0.9f, 0.9f, 0.9f, 1.0f)),
     recent_files(),
     last_opened_file(""),
-    working_directory("")
+    working_directory(""),
+    undo_history_size(50)
 {}
 
 void Config::create() {
