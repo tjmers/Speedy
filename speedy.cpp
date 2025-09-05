@@ -1,4 +1,5 @@
 #include "client.h"
+#include "config.h"
 #include "graphics.h"
 
 
@@ -57,6 +58,7 @@ int CALLBACK WinMain(
 	g = new Graphics();
 	client = new Client();
 	client->open_file("test.txt");
+	Config::create();
 	
 	if (!g->Init(hWnd))
 	{
@@ -92,6 +94,8 @@ int CALLBACK WinMain(
 	}
 	delete g;
 	delete client;
+	Config::get_instance()->save();
+	Config::destroy();
 	return (int)msg.wParam;
 }
 #pragma GCC diagnostic pop
@@ -102,43 +106,48 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
-		case WM_SIZE:
+	case WM_SIZE:
 		client_width = *(short*)&lParam;
 		client_height = *((short*)&lParam + 1);
 		g->Resize(client_width, client_height);
+		client->exit_command_mode();
+		return 0;
+	case WM_SETFOCUS:
+		client->exit_command_mode();
+		return 0;
+	case WM_KILLFOCUS:
+		client->exit_command_mode();
 		return 0;
 	case WM_TIMER:
-		if (wParam == 1)
-		{
-            show_cursor = !show_cursor;
-            InvalidateRect(hWnd, NULL, TRUE);
-		}
 		return 0;
 	case WM_DESTROY:
 	case WM_CLOSE:
 		PostQuitMessage(0);
 		return 0;
-	case WM_SYSKEYDOWN:
-		if (wParam == VK_MENU)
-			client->enter_command_mode();
-		return 0;
-	case WM_SYSKEYUP:
-		if (wParam == VK_MENU)
-			client->exit_command_mode();
-		return 0;
 	case WM_CHAR:
-    std::cout << (char)wParam;
 		client->process_character(static_cast<char>(wParam));
-
 		InvalidateRect(hWnd, NULL, TRUE);
 		return 0;
 	case WM_KEYDOWN:
+		if (wParam == 17) {
+			client->enter_command_mode();
+			InvalidateRect(hWnd, NULL, TRUE);
+			return 0;
+		}
+
 		client->process_special_key(static_cast<char>(wParam));
 		InvalidateRect(hWnd, NULL, TRUE);
 		return 0;
+	case WM_KEYUP:
+		if (wParam == 17) {
+			client->exit_command_mode();
+			InvalidateRect(hWnd, NULL, TRUE);
+			return 0;
+		}
+		return 0;
 	case WM_PAINT:
 		g->BeginDraw();
-		g->ClearScreen(1.0f, 1.0f, 1.0f);
+		g->ClearScreen(Config::get_instance()->get_background_color());
 		client->draw(g);
 		g->EndDraw();
 		return DefWindowProc(hWnd, uMsg, wParam, lParam);

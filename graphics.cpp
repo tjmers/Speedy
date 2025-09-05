@@ -1,5 +1,6 @@
 #include "graphics.h"
 
+#include "config.h"
 
 
 Graphics::Graphics()
@@ -44,8 +45,11 @@ bool Graphics::Init(HWND hWnd)
 
     if (res != S_OK) return false;
 
-    static const wchar_t msc_fontName[] = L"Courier";
-    static const FLOAT msc_fontSize = 16.0f;
+    std::string font_family = Config::get_instance()->get_font_family();
+    // Convert to std::wstring
+    std::wstring w_font_family(font_family.begin(), font_family.end());
+    static const wchar_t* msc_fontName = w_font_family.c_str();
+    static FLOAT msc_fontSize = Config::get_instance()->get_font_size();
 
     res = w_factory->CreateTextFormat(
         msc_fontName,
@@ -78,9 +82,9 @@ void Graphics::EndDraw() { render_target->EndDraw(); }
 
 void Graphics::SetColor(const D2D1::ColorF& color) { brush->SetColor(color); }
 
-void Graphics::ClearScreen(float r, float g, float b)
+void Graphics::ClearScreen(const D2D1::ColorF& color)
 {
-    render_target->Clear(D2D1::ColorF(r, g, b));
+    render_target->Clear(color);
 }
 
 

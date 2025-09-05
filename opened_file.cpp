@@ -1,5 +1,7 @@
 #include "opened_file.h"
 
+#include "config.h"
+
 #include <fstream>
 #include <iostream>
 
@@ -80,13 +82,13 @@ void OpenedFile::delete_character(int line_number, int char_position) {
         current_character = prev_line_length;
         return;
     }
-    lines[line_number].erase(lines[line_number].begin() + char_position);
+    lines[line_number].erase(lines[line_number].begin() + char_position - 1);
     current_character = char_position - 1;
 }
 
 void OpenedFile::draw(Graphics* g, int start_x, int start_y, int max_chars_per_line, int max_lines) const {
 
-    g->SetColor(D2D1::ColorF(0.18f, 0.18f, 0.18f));
+    g->SetColor(Config::get_instance()->get_text_color());
     constexpr int line_height = 20; 
     for (int i = 0; i < max_lines && i < static_cast<int>(lines.size()); ++i) {
         std::wstring line = lines[i];
@@ -97,4 +99,15 @@ void OpenedFile::draw(Graphics* g, int start_x, int start_y, int max_chars_per_l
             g->DrawString(line.c_str(), static_cast<int>(line.length()), static_cast<float>(start_x), static_cast<float>(start_y + i * line_height), 800.0f, static_cast<float>(line_height));
         }
     }
+
+    // Draw the indicator
+    g->SetColor(Config::get_instance()->get_indicator_color());
+    const float& font_size = Config::get_instance()->get_font_size();
+    g->DrawLine(
+        current_character * font_size * 0.6f,
+        current_line * font_size * 1.25f,
+        current_character * font_size * 0.6f,
+        (current_line + 1) * font_size * 1.25f,
+        2.0f
+    );
 }

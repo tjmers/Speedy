@@ -3,6 +3,7 @@
 #include "graphics.h"
 #include "opened_file.h"
 
+#include <iostream>
 #include <vector>
 
 

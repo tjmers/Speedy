@@ -12,6 +12,8 @@ bool Client::open_file(const std::string& file_path) {
 }
 
 void Client::process_character(const char character) {
+    // Do not process character input in command mode here.
+    if (in_command) return;
     switch (character) {
         case '\r': // Enter key
             opened_files[current_file].new_line();
@@ -22,9 +24,6 @@ void Client::process_character(const char character) {
         default:
             opened_files[current_file].insert_character(character, -1, -1);
             break;
-    }
-    if (in_command && character == 's') {
-        save_file();
     }
 }
 
@@ -72,6 +71,17 @@ void Client::process_special_key(const char key) {
         default:
             break;
     }
+
+    if (!in_command) return;
+
+    // Process all command keys here.
+    switch (key) {
+        case 'S': // Save file
+            save_file();
+            break;
+        default:
+            break;
+    }
 }
 
 
@@ -82,13 +92,6 @@ void Client::draw(Graphics* g) {
     const OpenedFile& file = opened_files[current_file];
 
     file.draw(g, 0, 0, 80, 40);
-    g->DrawLine(
-        file.get_current_character() * 8,
-        file.get_current_line() * 24,
-        file.get_current_character() * 8,
-        file.get_current_line() * 24 + 24,
-        2.0f
-    );
 
 }
 

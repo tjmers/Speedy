@@ -27,7 +27,7 @@ public:
     void EndDraw();
 
     void SetColor(const D2D1::ColorF& color);
-    void ClearScreen(float r, float g, float b);
+    void ClearScreen(const D2D1::ColorF& color);
     void DrawLine(const float x1, const float y1, const float x2, const float y2, const float stroke_width);
     void DrawRect(float x, float y, float width, float height);
     void DrawRect(float x, float y, float width, float height, float stroke_width);
