@@ -65,25 +65,48 @@ void OpenedFile::insert_character(char character, int line_number, int char_posi
     if (char_position == -1) {
         char_position = current_character;
     }
+
+    if (character == '\t') {
+        int tab_size = Config::get_instance()->get_tab_size();
+        past_actions.push_back(Edit(
+            [this, line_number, char_position, tab_size, move_cursor]() {
+                this->lines[line_number].insert(this->lines[line_number].begin() + char_position, tab_size, ' ');
+                if (move_cursor) {
+                    this->current_line = line_number;
+                    this->current_character = char_position + tab_size;
+                }
+                return true;
+            },
+            [this, line_number, char_position, tab_size, move_cursor]() {
+                this->lines[line_number].erase(this->lines[line_number].begin() + char_position, this->lines[line_number].begin() + char_position + tab_size);
+                if (move_cursor) {
+                    this->current_line = line_number;
+                    this->current_character = char_position;
+                }
+                return true;
+            }
+        ));
+    } else {
+        past_actions.push_back(Edit(
+            [this, line_number, char_position, character, move_cursor]() {
+                this->lines[line_number].insert(this->lines[line_number].begin() + char_position, character);
+                if (move_cursor) {
+                    this->current_line = line_number;
+                    this->current_character = char_position + 1;
+                }
+                return true;
+            },
+            [this, line_number, char_position, move_cursor]() {
+                this->lines[line_number].erase(this->lines[line_number].begin() + char_position);
+                if (move_cursor) {
+                    this->current_line = line_number;
+                    this->current_character = char_position;
+                }
+                return true;
+            }
+        ));
+    }
     
-    past_actions.push_back(Edit(
-        [this, line_number, char_position, character, move_cursor]() {
-            this->lines[line_number].insert(this->lines[line_number].begin() + char_position, character);
-            if (move_cursor) {
-                this->current_line = line_number;
-                this->current_character = char_position + 1;
-            }
-            return true;
-        },
-        [this, line_number, char_position, move_cursor]() {
-            this->lines[line_number].erase(this->lines[line_number].begin() + char_position);
-            if (move_cursor) {
-                this->current_line = line_number;
-                this->current_character = char_position;
-            }
-            return true;
-        }
-    ));
 
     past_actions.back().edit();
     if (static_cast<int>(past_actions.size()) > Config::get_instance()->get_undo_history_size()) {
