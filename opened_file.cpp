@@ -93,26 +93,41 @@ void OpenedFile::delete_character(int line_number, int char_position) {
 }
 
 void OpenedFile::draw(Graphics* g, int start_x, int start_y, int max_chars_per_line, int max_lines) const {
+    const float& font_size = Config::get_instance()->get_font_size();
+
+    // Draw line numbers if enabled
+    if (Config::get_instance()->get_show_line_numbers()) {
+        g->SetColor(Config::get_instance()->get_line_number_color());
+        int line_height = static_cast<int>(Config::get_instance()->get_font_size() * 1.25f);
+        for (int i = 0; i < max_lines && i < static_cast<int>(lines.size()); ++i) {
+            std::wstring line_number = std::to_wstring(i + 1);
+            float numbers_x = Config::get_instance()->get_explorer_width() + Config::get_instance()->get_left_margin() - font_size * 0.6f * (2 + (i + 1 >= 10) + (i + 1 >= 100) + (i + 1 >= 1000));
+            g->DrawString(line_number.c_str(), static_cast<int>(line_number.length()), numbers_x, static_cast<float>(start_y + i * line_height), 50.0f, static_cast<float>(line_height));
+        }
+    }
+
+    float x = Config::get_instance()->get_left_margin() + Config::get_instance()->get_explorer_width();
+    int y = 0;
 
     g->SetColor(Config::get_instance()->get_text_color());
-    constexpr int line_height = 20; 
+    int line_height = static_cast<int>(Config::get_instance()->get_font_size() * 1.25f);
+
     for (int i = 0; i < max_lines && i < static_cast<int>(lines.size()); ++i) {
         std::wstring line = lines[i];
         if (start_x > 0 || start_x + max_chars_per_line < static_cast<int>(line.length())) {
             std::wstring substringed_line = line.substr(start_x, max_chars_per_line);
             g->DrawString(substringed_line.c_str(), static_cast<int>(line.length()), static_cast<float>(start_x), static_cast<float>(start_y + i * line_height), 800.0f, static_cast<float>(line_height));
         } else {
-            g->DrawString(line.c_str(), static_cast<int>(line.length()), static_cast<float>(start_x), static_cast<float>(start_y + i * line_height), 800.0f, static_cast<float>(line_height));
+            g->DrawString(line.c_str(), static_cast<int>(line.length()), x, static_cast<float>(y + i * line_height), 800.0f, static_cast<float>(line_height));
         }
     }
 
     // Draw the indicator
     g->SetColor(Config::get_instance()->get_indicator_color());
-    const float& font_size = Config::get_instance()->get_font_size();
     g->DrawLine(
-        current_character * font_size * 0.6f,
+        current_character * font_size * 0.6f + x,
         current_line * font_size * 1.25f,
-        current_character * font_size * 0.6f,
+        current_character * font_size * 0.6f + x,
         (current_line + 1) * font_size * 1.25f,
         2.0f
     );

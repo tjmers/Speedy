@@ -41,6 +41,10 @@ public:
     inline void set_line_number_color(const D2D1::ColorF& color) { line_number_color = color; }
     inline D2D1::ColorF get_indicator_color() const { return indicator_color; }
     inline void set_indicator_color(const D2D1::ColorF& color) { indicator_color = color; }
+    inline int get_left_margin() const { return left_margin; }
+    inline void set_left_margin(const int margin) { left_margin = margin; }
+    inline int get_explorer_width() const { return explorer_width; }
+    inline void set_explorer_width(const int width) { explorer_width = width; }
     inline float get_font_size() const { return font_size; }
     inline void set_font_size(const float size) { font_size = size; }
     inline std::string get_font_family() const { return font_family; }
@@ -67,6 +71,8 @@ private:
     bool show_line_numbers;
     D2D1::ColorF line_number_color;
     D2D1::ColorF indicator_color;
+    int left_margin;
+    int explorer_width;
 
     float font_size;
     std::string font_family;

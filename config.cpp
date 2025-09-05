@@ -12,6 +12,8 @@ Config::Config() :
     show_line_numbers(true),
     line_number_color(D2D1::ColorF(D2D1::ColorF::Gray)),
     indicator_color(D2D1::ColorF(D2D1::ColorF::Red)),
+    left_margin(10),
+    explorer_width(0),
     font_size(16.0f),
     font_family("Courier New"),
     text_color(D2D1::ColorF(0.9f, 0.9f, 0.9f, 1.0f)),
@@ -48,6 +50,8 @@ void Config::save() {
         config_file << "show_line_numbers " << show_line_numbers << "\n";
         config_file << "line_number_color " << line_number_color.r << " " << line_number_color.g << " " << line_number_color.b << " " << line_number_color.a << "\n";
         config_file << "indicator_color " << indicator_color.r << " " << indicator_color.g << " " << indicator_color.b << " " << indicator_color.a << "\n";
+        config_file << "left_margin " << left_margin << "\n";
+        config_file << "explorer_width " << explorer_width << "\n";
         config_file << "font_size " << font_size << "\n";
         config_file << "font_family " << font_family << "\n";
         config_file << "text_color " << text_color.r << " " << text_color.g << " " << text_color.b << " " << text_color.a << "\n";
@@ -90,6 +94,10 @@ bool Config::load(const std::string& file_name) {
             float r, g, b, a;
             config_file >> r >> g >> b >> a;
             indicator_color = D2D1::ColorF(r, g, b, a);
+        } else if (key == "left_margin") {
+            config_file >> left_margin;
+        } else if (key == "explorer_width") {
+            config_file >> explorer_width;
         } else if (key == "font_size") {
             config_file >> font_size;
         } else if (key == "font_family") {
