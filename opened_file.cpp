@@ -8,6 +8,8 @@
 OpenedFile::OpenedFile(const std::string& path)
     : file_path(path), current_line(0), current_character(0), open(false) {
     std::wifstream file(file_path);
+
+    // Open the file and read its contents into the lines vector.
     if (file.is_open()) {
         open = true;
         std::wstring line;
@@ -15,6 +17,10 @@ OpenedFile::OpenedFile(const std::string& path)
             lines.push_back(line);
         }
         file.close();
+    }
+
+    if (lines.empty()) {
+        lines.push_back(L"");
     }
 }
 

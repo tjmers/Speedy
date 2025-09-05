@@ -81,7 +81,7 @@ int CALLBACK WinMain(
 	#pragma GCC diagnostic push
 	#pragma GCC diagnostic ignored "-Wparentheses"
 	while (gResult = GetMessage(&msg, nullptr, 0, 0) > 0)
-	#pragma GCC diagnostic pop
+	#pragma GCC diagnostic pop // -Wparentheses
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
@@ -89,7 +89,9 @@ int CALLBACK WinMain(
 	if (gResult == -1) {
 		delete g;
 		delete client;
-		std::cerr << "An error occured while running the message loop\n";
+		Config::get_instance()->save();
+		Config::destroy();
+		std::cerr << "An error occured while running the message loop. Code: " << GetLastError() << "\n";
 		return -1;
 	}
 	delete g;
@@ -98,7 +100,7 @@ int CALLBACK WinMain(
 	Config::destroy();
 	return (int)msg.wParam;
 }
-#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop // -pWunused-parameter
 
 
 

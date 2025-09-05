@@ -22,7 +22,7 @@ void Client::process_character(const char character) {
             opened_files[current_file].delete_character();
             break;
         default:
-            opened_files[current_file].insert_character(character, -1, -1);
+            opened_files[current_file].insert_character(character);
             break;
     }
 }
@@ -79,6 +79,13 @@ void Client::process_special_key(const char key) {
         case 'S': // Save file
             save_file();
             break;
+        case 'Z': // Undo
+            break;
+        case 'Y': // Redo
+            break;
+        case 'W': // Close file
+            close_file(current_file);
+            break;
         default:
             break;
     }
@@ -100,4 +107,8 @@ void Client::save_file() const {
         return;
     }
     opened_files[current_file].write();
+}
+
+void Client::close_file(int file_id) {
+    
 }
