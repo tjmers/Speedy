@@ -12,6 +12,12 @@ public:
     /// @brief Constructs a new OpenedFile object and attempts to open the file at the specified path.
     OpenedFile(const std::string& path);
 
+    OpenedFile(const OpenedFile& other);
+    OpenedFile& operator=(const OpenedFile& other);
+
+    OpenedFile(OpenedFile&& other) noexcept;
+    OpenedFile& operator=(OpenedFile&& other) noexcept;
+
     /// @brief Checks if the file is successfully opened.
     inline bool is_open() const { return open;}
 
@@ -33,12 +39,28 @@ public:
     /// @param char_position The character position within the line to delete.
     void delete_character(int line_number = -1, int char_position = -1, bool move_cursor = true);
 
+    /// @brief Deletes a range of text from start position to end position.
+    /// @param start_line The starting line number of the range to delete.
+    /// @param start_char The starting character position within the starting line (included).
+    /// @param end_line The ending line number of the range to delete.
+    /// @param end_char The ending character position within the ending line (excluded).
+    /// @param move_cursor If true, moves the cursor to the start position after deletion.
+    void delete_range(int start_line, int start_char, int end_line, int end_char, bool move_cursor = true);
+
+    /// @brief Undos the last edit action.
+    /// @return True if the undo was successful, false if there was no undo.
     bool undo();
+
+    /// @brief Redos the last undone action.
+    /// @return True if the redo was successful, false if there was no redo.
+    bool redo();
 
 
     // Getters and setters
     inline int get_current_line() const { return current_line; }
-    inline int get_current_character() const { return current_character; }
+    inline int get_current_character_index() const { return current_character; }
+    inline char get_current_character() const { return lines[current_line][current_character]; }
+    inline const std::wstring& get_current_line_contents() const { return lines[current_line]; }
     inline int get_num_lines(int line_number = -1) const { if (line_number == -1) line_number = current_line; return static_cast<int>(lines.size()); }
     inline int get_num_characters(int line_number = -1) const { if (line_number == -1) line_number = current_line; return static_cast<int>(lines[line_number].size()); }
     inline void set_current_line(int line) { current_line = line; }
@@ -73,4 +95,6 @@ private:
     /// @brief A deque storing the history of edit actions for undo functionality.
     std::deque<Edit> past_actions;
 
+    /// @brief A deque storing the history of undone actions for redo functionality.
+    std::deque<Edit> past_undos;
 };

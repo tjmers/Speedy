@@ -28,6 +28,9 @@ public:
     /// @param key the special key to process.
     void process_special_key(const char key);
 
+    void process_arrow_key(const char key);
+    void process_command_mode_key(const char key);
+
     inline void enter_command_mode() { in_command = true; }
     inline void exit_command_mode() { in_command = false; }
 
