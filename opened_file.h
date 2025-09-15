@@ -61,7 +61,7 @@ public:
     inline int get_current_character_index() const { return current_character; }
     inline char get_current_character() const { return lines[current_line][current_character]; }
     inline const std::wstring& get_current_line_contents() const { return lines[current_line]; }
-    inline int get_num_lines(int line_number = -1) const { if (line_number == -1) line_number = current_line; return static_cast<int>(lines.size()); }
+    inline int get_num_lines() const { return static_cast<int>(lines.size()); }
     inline int get_num_characters(int line_number = -1) const { if (line_number == -1) line_number = current_line; return static_cast<int>(lines[line_number].size()); }
     inline void set_current_line(int line) { current_line = line; }
     inline void set_current_character(int character) { current_character = character; }

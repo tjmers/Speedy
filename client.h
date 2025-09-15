@@ -24,27 +24,31 @@ public:
     /// @param character the character to process.
     void process_character(const char character);
 
-    /// @brief Processes a special key input from the user.
-    /// @param key the special key to process.
-    void process_special_key(const char key);
 
-    void process_arrow_key(const char key);
-    void process_command_mode_key(const char key);
+    /// @brief Saves the current file.
+    void save_file(int file_id = -1) const;
 
-    inline void enter_command_mode() { in_command = true; }
-    inline void exit_command_mode() { in_command = false; }
+    /// @brief Closes the specified file and removes it from the list of opened files.
+    /// @param file_id The unique identifier of the file to close.
+    void close_file(int file_id = -1);
 
     /// @brief Draws the current state of the client using the provided Graphics object.
     /// @param g the Graphics object used for drawing.
     void draw(Graphics* g); // Implementation for drawing the client state can be added here.
 
-private:
-    /// @brief Saves the current file.
-    void save_file() const;
+    inline OpenedFile& get_working_file() { return opened_files[current_file]; }
 
-    /// @brief Closes the specified file and removes it from the list of opened files.
-    /// @param file_id The unique identifier of the file to close.
-    void close_file(int file_id);
+    void move_left();
+    void move_right();
+    void move_up();
+    void move_down();
+    void jump_left();
+    void jump_right();
+
+    void delete_group();
+
+private:
+
 
     /// @brief The list of opened files.
     std::vector<OpenedFile> opened_files;

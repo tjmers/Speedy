@@ -1,4 +1,5 @@
 #include "client.h"
+#include "command_controller.h"
 #include "config.h"
 #include "graphics.h"
 
@@ -59,6 +60,7 @@ int CALLBACK WinMain(
 	client = new Client();
 	client->open_file("test.txt");
 	Config::create();
+	CommandController::init(client);
 	
 	if (!g->Init(hWnd))
 	{
@@ -97,10 +99,12 @@ int CALLBACK WinMain(
 	delete g;
 	delete client;
 	Config::get_instance()->save();
+	CommandController::get_instance()->save_commands();
+	delete CommandController::get_instance();
 	Config::destroy();
 	return (int)msg.wParam;
 }
-#pragma GCC diagnostic pop // -pWunused-parameter
+#pragma GCC diagnostic pop // -Wunused-parameter
 
 
 
@@ -112,13 +116,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		client_width = *(short*)&lParam;
 		client_height = *((short*)&lParam + 1);
 		g->Resize(client_width, client_height);
-		client->exit_command_mode();
 		return 0;
 	case WM_SETFOCUS:
-		client->exit_command_mode();
+		InvalidateRect(hWnd, NULL, TRUE);
 		return 0;
 	case WM_KILLFOCUS:
-		client->exit_command_mode();
+		InvalidateRect(hWnd, NULL, TRUE);
 		return 0;
 	case WM_TIMER:
 		return 0;
@@ -131,21 +134,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		InvalidateRect(hWnd, NULL, TRUE);
 		return 0;
 	case WM_KEYDOWN:
-		if (wParam == 17) {
-			client->enter_command_mode();
+		if (CommandController::get_instance()->run_commands()) {
 			InvalidateRect(hWnd, NULL, TRUE);
 			return 0;
-		}
-
-		client->process_special_key(static_cast<char>(wParam));
-		InvalidateRect(hWnd, NULL, TRUE);
-		return 0;
+		} 
+		return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 	case WM_KEYUP:
-		if (wParam == 17) {
-			client->exit_command_mode();
-			InvalidateRect(hWnd, NULL, TRUE);
-			return 0;
-		}
 		return 0;
 	case WM_PAINT:
 		g->BeginDraw();
