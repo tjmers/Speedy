@@ -1,7 +1,7 @@
 #include "client.h"
 
 Client::Client()
-    : current_file(-1) {}
+    : current_file(-1), opened_files{} {}
 
 Client::~Client() {}
 
@@ -13,7 +13,6 @@ bool Client::open_file(const std::string& file_path) {
 
 void Client::process_character(const char character) {
     // Do not process character input in command mode here.
-    if (in_command) return;
     switch (character) {
         case '\r': // Enter key
             opened_files[current_file].new_line();

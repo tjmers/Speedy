@@ -111,7 +111,6 @@ bool CommandController::load_commands() {
                 // Log info here
             }
         }
-        std::cout << "Creating command " << command_name << " with description " << description << " and actions " << actions << '\n';
         commands.emplace_back(command_name, description, actions, get_bools_from_string(key_reqs), [action_functions](){for (const auto& f : action_functions)f();});
     }
 

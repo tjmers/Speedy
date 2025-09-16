@@ -56,7 +56,4 @@ private:
     /// @brief The index of the currently active file in the opened_files vector.
     int current_file;
 
-    /// @brief Indicates whether the client is currently in command mode. Indicated by holding down the ALT key.
-    bool in_command;
-
 };
