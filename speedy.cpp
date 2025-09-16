@@ -57,6 +57,7 @@ int CALLBACK WinMain(
 	);
 	
 	g = new Graphics();
+	Client::init();
 	client = new Client();
 	client->open_file("test.txt");
 	Config::create();

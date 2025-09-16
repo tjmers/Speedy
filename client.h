@@ -4,12 +4,15 @@
 #include "opened_file.h"
 
 #include <iostream>
+#include <unordered_set>
 #include <vector>
 
 
 class Client {
     
 public:
+
+    static void init();
     
     /// @brief Constructs a new Client object.
     Client();
@@ -56,4 +59,5 @@ private:
     /// @brief The index of the currently active file in the opened_files vector.
     int current_file;
 
+    static std::unordered_set<char> insertable_characters;
 };

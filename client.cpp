@@ -1,7 +1,40 @@
 #include "client.h"
 
+std::unordered_set<char> Client::insertable_characters;
+
+void Client::init() {
+    // Initialize the insertable_characters set
+
+    // Add all uppercase characters
+    for (char c = 'A'; c <= 'Z'; ++c) {
+        insertable_characters.insert(c);
+    }
+
+    // Add all lowercase characters
+    for (char c = 'a'; c <= 'z'; ++c) {
+        insertable_characters.insert(c);
+    }
+
+    // Add all numbers
+    for (char c = '0'; c <= '9'; ++c) {
+        insertable_characters.insert(c);
+    }
+
+    // Add special characters
+    std::string char_to_insert = " `~!@#$%^&*()-_=+[{]}\\|;:\'\",<.>/?";
+    for (char c : char_to_insert) {
+        insertable_characters.insert(c);
+    }
+
+    // Add backspace and carrige return
+    insertable_characters.insert(VK_BACK);
+    insertable_characters.insert('\r');
+}
+    
+    
+
 Client::Client()
-    : current_file(-1), opened_files{} {}
+    : opened_files{}, current_file(-1) {}
 
 Client::~Client() {}
 
@@ -12,9 +45,10 @@ bool Client::open_file(const std::string& file_path) {
 }
 
 void Client::process_character(const char character) {
-    // Do not process character input in command mode here.
+    // Do not insert a character if it isn't allowed
+    if (!insertable_characters.contains(character)) return;
     switch (character) {
-        case '\r': // Enter key
+        case '\r': // Carrige return (enter key)
             opened_files[current_file].new_line();
             break;
         case VK_BACK:
