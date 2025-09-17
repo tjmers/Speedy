@@ -28,7 +28,7 @@ void Config::create() {
 
     // Load all variables from the config file here.
 
-    instance->load("config.cfg");
+    instance->load("./config/config.cfg");
 }
 
 void Config::destroy() {
@@ -42,7 +42,7 @@ bool Config::exists() {
 
 void Config::save() {
     // Save all variables to the config file here.
-    std::ofstream config_file("config.cfg");
+    std::ofstream config_file("./config/config.cfg");
     if (config_file.is_open()) {
         config_file << "background_color " << background_color.r << " " << background_color.g << " " << background_color.b << " " << background_color.a << "\n";
         config_file << "line_spacing " << line_spacing << "\n";

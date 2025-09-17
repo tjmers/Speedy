@@ -52,7 +52,7 @@ std::array<bool, 256> get_bools_from_string(const std::string& str) {
 bool CommandController::load_commands() {
     // Attempt to load commands from commands.cfg
     // Use default command list if not
-    std::ifstream commands_file("commands.cfg");
+    std::ifstream commands_file("./config/commands.cfg");
 
     if (!commands_file.is_open()) {
         return false;
@@ -216,7 +216,7 @@ std::string key_string(const std::array<bool, 256>& keys) {
 }
 
 void CommandController::save_commands() const {
-    std::ofstream commands_file("commands.cfg");
+    std::ofstream commands_file("./config/commands.cfg");
     // Each command takes four lines
     // 1: Name
     // 2: Description
