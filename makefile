@@ -6,11 +6,18 @@ LDFLAGS := -ld2d1 -ldwrite
 # Directories
 SRC_DIR := src
 BUILD_DIR := build
+TEST_DIR := tests
+TEST_BUILD_DIR := $(BUILD_DIR)/test
 
 # Files
 SRCS := $(wildcard $(SRC_DIR)/*.cpp)
 OBJS := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRCS))
 TARGET := Speedy.exe
+
+# Test files
+TEST_SRCS := $(wildcard $(TEST_DIR)/*.cpp)
+TEST_OBJS := $(patsubst $(TEST_DIR)/%.cpp, $(TEST_BUILD_DIR)/%.o, $(TEST_SRCS))
+TEST_TARGET := tests.exe
 
 # Default target
 all: $(TARGET)
@@ -19,14 +26,29 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CXX) $(OBJS) -o $@ $(LDFLAGS)
 
-# Compile step (Windows-friendly mkdir)
+# Force Windows-friendly directory separators
+TEST_BUILD_DIR_WIN := $(subst /,\,$(TEST_BUILD_DIR))
+BUILD_DIR_WIN := $(subst /,\,$(BUILD_DIR))
+
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
-	if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
+	if not exist "$(BUILD_DIR_WIN)" mkdir "$(BUILD_DIR_WIN)"
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+
+# ===== Test build =====
+test: $(TEST_TARGET)
+	./$(TEST_TARGET)
+
+$(TEST_TARGET): $(OBJS) $(TEST_OBJS)
+	$(CXX) $(OBJS) $(TEST_OBJS) -o $@ $(LDFLAGS)
+
+$(TEST_BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp
+	if not exist "$(TEST_BUILD_DIR_WIN)" mkdir "$(TEST_BUILD_DIR_WIN)"
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Clean up
 clean:
-	del /Q $(BUILD_DIR)\*.o $(TARGET) 2>nul || exit 0
+	del /Q $(BUILD_DIR)\*.o $(TEST_BUILD_DIR)\*.o $(TARGET) $(TEST_TARGET) 2>nul || exit 0
 	del config/speedy.cfg config/commands.cfg
 
-.PHONY: all clean
+.PHONY: all clean test
