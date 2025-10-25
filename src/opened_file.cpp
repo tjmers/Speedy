@@ -100,18 +100,22 @@ void OpenedFile::new_line(int line_number, int character_position, bool move_cur
         character_position = current_character;
     }
 
+    // Calculate number of spaces before the first character on the line
+    int n_spaces = 0;
+    while (n_spaces < static_cast<int>(lines[line_number].size()) && lines[line_number][n_spaces] == ' ') ++n_spaces;
+    
     const wchar_t* deleted_characters = lines[line_number].substr(character_position).c_str();
     past_actions.push_back(Edit(
-        [this, line_number, character_position, move_cursor]() {
-            std::wstring new_line;
+        [this, line_number, character_position, move_cursor, n_spaces]() {
+            std::wstring new_line(n_spaces, L' ');
             if (character_position < static_cast<int>(lines[line_number].size())) {
-                new_line = lines[line_number].substr(character_position);
+                new_line += lines[line_number].substr(character_position);
                 lines[line_number] = lines[line_number].substr(0, character_position);
             }
-            lines.insert(lines.begin() + line_number + 1, new_line);
+            lines.insert(lines.begin() + line_number + 1, std::move(new_line));
             if (move_cursor) {
                 current_line = line_number + 1;
-                current_character = 0;
+                current_character = n_spaces;
             }
             return true;
         },
