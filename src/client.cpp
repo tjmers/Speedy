@@ -29,6 +29,9 @@ void Client::init() {
     // Add backspace and carrige return
     insertable_characters.insert(VK_BACK);
     insertable_characters.insert('\r');
+
+    // Add tab
+    insertable_characters.insert('\t');
 }
     
     
