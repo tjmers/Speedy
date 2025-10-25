@@ -54,7 +54,11 @@ public:
 
     void delete_group();
 
+    void begin_autosave();
+    void end_autosave();
+
 private:
+
 
     static Client* instance;
 
@@ -66,4 +70,7 @@ private:
     int current_file;
 
     static std::unordered_set<char> insertable_characters;
+    void autosave();
+
+    HANDLE autosave_timer;
 };

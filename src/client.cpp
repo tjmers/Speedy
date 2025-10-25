@@ -46,10 +46,9 @@ Client* Client::get_instance() {
 
 Client* Client::instance = nullptr;
     
-    
 
 Client::Client()
-    : opened_files{}, current_file(-1) {}
+    : opened_files{}, current_file(-1), autosave_timer(NULL) {}
 
 Client::~Client() {}
 
@@ -199,4 +198,32 @@ void Client::close_file(int file_id) {
     if (file_id == -1) file_id = current_file;
     opened_files.erase(opened_files.begin() + file_id);
     if (current_file >= static_cast<int>(opened_files.size())) current_file = static_cast<int>(opened_files.size()) - 1;
+}
+
+
+void Client::begin_autosave() {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+    CreateTimerQueueTimer(
+        &autosave_timer,
+        NULL,
+        [] (PVOID lp_param, BOOLEAN TimerOrWaitFired) {
+            static_cast<Client*>(lp_param)->autosave();
+        },
+        this,
+        0,
+        500, // Autosave delay in MS
+        WT_EXECUTEDEFAULT
+    );
+#pragma GCC diagnostic pop
+}
+
+void Client::end_autosave() {
+    if (autosave_timer) {
+        DeleteTimerQueueTimer(NULL, &autosave_timer, NULL);
+    }
+}
+
+void Client::autosave() {
+    save_file();
 }

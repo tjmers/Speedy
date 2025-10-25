@@ -78,6 +78,8 @@ int CALLBACK WinMain(
 	
 	MSG msg;
 	BOOL gResult;
+
+	Client::get_instance()->begin_autosave();
 	
 	#pragma GCC diagnostic push
 	#pragma GCC diagnostic ignored "-Wparentheses"
