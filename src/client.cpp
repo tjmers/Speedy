@@ -32,7 +32,19 @@ void Client::init() {
 
     // Add tab
     insertable_characters.insert('\t');
+
+    instance = new Client();
 }
+
+void Client::cleanup() {
+    delete instance;
+}
+
+Client* Client::get_instance() {
+    return instance;
+}
+
+Client* Client::instance = nullptr;
     
     
 

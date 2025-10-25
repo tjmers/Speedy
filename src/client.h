@@ -13,9 +13,13 @@ class Client {
 public:
 
     static void init();
+    static void cleanup();
+    static Client* get_instance();
     
     /// @brief Constructs a new Client object.
-    Client();
+private:
+    Client(); // Prevent instantiation
+public:
     
     /// @brief Destroys the Client object and releases any allocated resources.
     ~Client();
@@ -29,7 +33,7 @@ public:
 
 
     /// @brief Saves the current file.
-    void save_file(int file_id = -1) const;
+    void CALLBACK save_file(int file_id = -1) const;
 
     /// @brief Closes the specified file and removes it from the list of opened files.
     /// @param file_id The unique identifier of the file to close.
@@ -51,6 +55,8 @@ public:
     void delete_group();
 
 private:
+
+    static Client* instance;
 
 
     /// @brief The list of opened files.

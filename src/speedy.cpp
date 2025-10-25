@@ -6,7 +6,6 @@
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 Graphics* g;
-Client* client;
 
 constexpr int LINE_HEIGHT = 16;
 constexpr int LINE_SPACING = 8; // the space in between lines
@@ -58,10 +57,9 @@ int CALLBACK WinMain(
 	
 	g = new Graphics();
 	Client::init();
-	client = new Client();
-	client->open_file("test.txt");
+	Client::get_instance()->open_file("test.txt");
 	Config::create();
-	CommandController::init(client);
+	CommandController::init(Client::get_instance());
 	
 	if (!g->Init(hWnd))
 	{
@@ -91,14 +89,14 @@ int CALLBACK WinMain(
 	}
 	if (gResult == -1) {
 		delete g;
-		delete client;
+		Client::cleanup();
 		Config::get_instance()->save();
 		Config::destroy();
 		std::cerr << "An error occured while running the message loop. Code: " << GetLastError() << "\n";
 		return -1;
 	}
 	delete g;
-	delete client;
+	Client::cleanup();
 	Config::get_instance()->save();
 	CommandController::get_instance()->save_commands();
 	delete CommandController::get_instance();
@@ -131,7 +129,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		PostQuitMessage(0);
 		return 0;
 	case WM_CHAR:
-		client->process_character(static_cast<char>(wParam));
+		Client::get_instance()->process_character(static_cast<char>(wParam));
 		InvalidateRect(hWnd, NULL, TRUE);
 		return 0;
 	case WM_KEYDOWN:
@@ -145,7 +143,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_PAINT:
 		g->BeginDraw();
 		g->ClearScreen(Config::get_instance()->get_background_color());
-		client->draw(g);
+		Client::get_instance()->draw(g);
 		g->EndDraw();
 		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 	default:
