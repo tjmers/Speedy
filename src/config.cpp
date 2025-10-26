@@ -10,7 +10,7 @@ Config::Config() :
     character_spacing(1.0f),
     tab_size(4),
     show_line_numbers(true),
-    line_number_color(D2D1::ColorF(D2D1::ColorF::Gray)),
+    line_number_color(D2D1::ColorF(D2D1::ColorF::White)),
     indicator_color(D2D1::ColorF(D2D1::ColorF::Red)),
     left_margin(10),
     explorer_width(0),

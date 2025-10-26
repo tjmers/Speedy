@@ -411,17 +411,22 @@ void OpenedFile::draw(Graphics* g, int start_x, int start_y, int max_chars_per_l
     const float& font_size = Config::get_instance()->get_font_size();
     int line_height = static_cast<int>(Config::get_instance()->get_font_size() * 1.25f);
 
-    // Draw line numbers if enabled
+    // Calculate line number area width
+    float line_number_width = 0;
     if (Config::get_instance()->get_show_line_numbers()) {
+        // Calculate width needed for line numbers (assuming up to 4 digits)
+        line_number_width = font_size * 0.6f * 4 + 10; // 4 digits + 10px padding
+        
+        // Draw line numbers
         g->SetColor(Config::get_instance()->get_line_number_color());
         for (int i = 0; i < max_lines && i < static_cast<int>(lines.size()); ++i) {
             std::wstring line_number = std::to_wstring(i + 1);
-            float numbers_x = Config::get_instance()->get_explorer_width() + Config::get_instance()->get_left_margin() - font_size * 0.6f * (2 + (i + 1 >= 10) + (i + 1 >= 100) + (i + 1 >= 1000));
-            g->DrawString(line_number.c_str(), static_cast<int>(line_number.length()), numbers_x, static_cast<float>(start_y + i * line_height), 50.0f, static_cast<float>(line_height));
+            float numbers_x = Config::get_instance()->get_explorer_width() + 5; // 5 pixels from left edge
+            g->DrawString(line_number.c_str(), static_cast<int>(line_number.length()), numbers_x, static_cast<float>(start_y + i * line_height), line_number_width, static_cast<float>(line_height));
         }   
     }
 
-    float x = Config::get_instance()->get_left_margin() + Config::get_instance()->get_explorer_width();
+    float x = Config::get_instance()->get_left_margin() + Config::get_instance()->get_explorer_width() + line_number_width;
     
     // Get normalized selection range if active
     int sel_start_line = -1, sel_start_char = -1, sel_end_line = -1, sel_end_char = -1;

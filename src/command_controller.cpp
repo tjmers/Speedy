@@ -45,7 +45,8 @@ bool CommandController::run_commands() const {
     // Map VK_LMENU and VK_RMENU to VK_MENU for easier matching
     if (down[VK_LMENU] || down[VK_RMENU]) {
         down[VK_MENU] = true;
-        down[VK_LMENU] = false;  // Clear the left/right alt keys
+        down[VK_LMENU] = false;  // Clear the left/right alt 
+        // keys
         down[VK_RMENU] = false;
     }
     
