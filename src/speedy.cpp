@@ -50,16 +50,16 @@ int CALLBACK WinMain(
 	LPSTR lpCmdLine,
 	int nCmdShow)
 	{
-		WNDCLASSEXW window{};
-		window.hInstance = hInstance;
-		window.lpszClassName = L"mainwin";
-		window.lpfnWndProc = WndProc;
-		window.cbSize = sizeof(window);
-		window.style = CS_OWNDC | CS_DBLCLKS; // Added CS_DBLCLKS for double-click support
-		window.cbClsExtra = 0;
-		window.cbWndExtra = 0;
+	WNDCLASSEXW window{};
+	window.hInstance = hInstance;
+	window.lpszClassName = L"mainwin";
+	window.lpfnWndProc = WndProc;
+	window.cbSize = sizeof(window);
+	window.style = CS_OWNDC | CS_DBLCLKS; // Added CS_DBLCLKS for double-click support
+	window.cbClsExtra = 0;
+	window.cbWndExtra = 0;
 	window.hIcon = nullptr;
-	window.hCursor = nullptr;
+	window.hCursor = LoadCursor(NULL, IDC_ARROW);
 	window.lpszMenuName = nullptr;
 	window.hIconSm = nullptr;
 	RegisterClassExW(&window);
