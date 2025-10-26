@@ -107,6 +107,51 @@ bool CommandController::load_commands() {
                 iss >> next_token;
                 int file_id = std::stoi(next_token);
                 action_functions.push_back([this, file_id](){this->client->close_file(file_id);});
+            } else if (action_name == "SELECT_LEFT") {
+                action_functions.push_back([this](){this->client->move_left(true);});
+            } else if (action_name == "SELECT_RIGHT") {
+                action_functions.push_back([this](){this->client->move_right(true);});
+            } else if (action_name == "SELECT_UP") {
+                action_functions.push_back([this](){this->client->move_up(true);});
+            } else if (action_name == "SELECT_DOWN") {
+                action_functions.push_back([this](){this->client->move_down(true);});
+            } else if (action_name == "SELECT_WORD_LEFT") {
+                action_functions.push_back([this](){this->client->jump_left(true);});
+            } else if (action_name == "SELECT_WORD_RIGHT") {
+                action_functions.push_back([this](){this->client->jump_right(true);});
+            } else if (action_name == "COPY") {
+                action_functions.push_back([this](){
+                    HWND hwnd = GetActiveWindow();
+                    this->client->copy(hwnd);
+                });
+            } else if (action_name == "CUT") {
+                action_functions.push_back([this](){
+                    HWND hwnd = GetActiveWindow();
+                    this->client->cut(hwnd);
+                });
+            } else if (action_name == "PASTE") {
+                action_functions.push_back([this](){
+                    HWND hwnd = GetActiveWindow();
+                    this->client->paste(hwnd);
+                });
+            } else if (action_name == "SELECT_ALL") {
+                action_functions.push_back([this](){this->client->select_all();});
+            } else if (action_name == "DELETE") {
+                action_functions.push_back([this](){
+                    OpenedFile& file = this->client->get_working_file();
+                    if (file.get_selection().has_selection()) {
+                        file.delete_selection();
+                    } else {
+                        int line = file.get_current_line();
+                        int pos = file.get_current_character_index();
+                        if (pos < file.get_num_characters(line)) {
+                            file.delete_character(line, pos + 1, false);
+                        } else if (line < file.get_num_lines() - 1) {
+                            // Delete newline - merge with next line
+                            file.delete_character(line + 1, 0, false);
+                        }
+                    }
+                });
             } else {
                 // Log info here
             }
@@ -201,6 +246,115 @@ void CommandController::get_default_commands() {
         "CLOSE_FILE -1",
         std::vector<char>{VK_CONTROL, 'W'},
         [this] () {this->client->close_file();}
+    );
+    // Arrow Keys with Shift for selection
+    commands.emplace_back(
+        "Select Left",
+        "Extends selection to the left",
+        "SELECT_LEFT",
+        std::vector<char>({VK_LEFT, VK_SHIFT}),
+        [this] () {this->client->move_left(true);}
+    );
+    commands.emplace_back(
+        "Select Right",
+        "Extends selection to the right",
+        "SELECT_RIGHT",
+        std::vector<char>({VK_RIGHT, VK_SHIFT}),
+        [this] () {this->client->move_right(true);}
+    );
+    commands.emplace_back(
+        "Select Up",
+        "Extends selection upward",
+        "SELECT_UP",
+        std::vector<char>({VK_UP, VK_SHIFT}),
+        [this] () {this->client->move_up(true);}
+    );
+    commands.emplace_back(
+        "Select Down",
+        "Extends selection downward",
+        "SELECT_DOWN",
+        std::vector<char>({VK_DOWN, VK_SHIFT}),
+        [this] () {this->client->move_down(true);}
+    );
+    
+    // Ctrl+Shift+Arrow for word selection
+    commands.emplace_back(
+        "Select Word Left",
+        "Extends selection to the previous word",
+        "SELECT_WORD_LEFT",
+        std::vector<char>({VK_LEFT, VK_CONTROL, VK_SHIFT}),
+        [this] () {this->client->jump_left(true);}
+    );
+    commands.emplace_back(
+        "Select Word Right",
+        "Extends selection to the next word",
+        "SELECT_WORD_RIGHT",
+        std::vector<char>({VK_RIGHT, VK_CONTROL, VK_SHIFT}),
+        [this] () {this->client->jump_right(true);}
+    );
+    
+    // Copy, Cut, Paste
+    commands.emplace_back(
+        "Copy",
+        "Copies selected text to clipboard",
+        "COPY",
+        std::vector<char>({VK_CONTROL, 'C'}),
+        [this] () {
+            HWND hwnd = GetActiveWindow();
+            this->client->copy(hwnd);
+        }
+    );
+    commands.emplace_back(
+        "Cut",
+        "Cuts selected text to clipboard",
+        "CUT",
+        std::vector<char>({VK_CONTROL, 'X'}),
+        [this] () {
+            HWND hwnd = GetActiveWindow();
+            this->client->cut(hwnd);
+        }
+    );
+    commands.emplace_back(
+        "Paste",
+        "Pastes text from clipboard",
+        "PASTE",
+        std::vector<char>({VK_CONTROL, 'V'}),
+        [this] () {
+            HWND hwnd = GetActiveWindow();
+            this->client->paste(hwnd);
+        }
+    );
+    
+    // Select All
+    commands.emplace_back(
+        "Select All",
+        "Selects all text in the document",
+        "SELECT_ALL",
+        std::vector<char>({VK_CONTROL, 'A'}),
+        [this] () {this->client->select_all();}
+    );
+    
+    // Delete key
+    commands.emplace_back(
+        "Delete",
+        "Deletes the character at cursor or selected text",
+        "DELETE",
+        std::vector<char>({VK_DELETE}),
+        [this] () {
+            OpenedFile& file = this->client->get_working_file();
+            if (file.get_selection().has_selection()) {
+                file.delete_selection();
+            } else {
+                int line = file.get_current_line();
+                int pos = file.get_current_character_index();
+                if (pos < file.get_num_characters(line)) {
+                    file.delete_character(line, pos + 1, false);
+                } else if (line < file.get_num_lines() - 1) {
+                    // Delete newline - merge with next line
+                    file.delete_character(line + 1, 0, false);
+                }
+            }
+        }
     );
 }
 

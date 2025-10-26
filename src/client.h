@@ -7,70 +7,66 @@
 #include <unordered_set>
 #include <vector>
 
-
 class Client {
     
 public:
-
     static void init();
     static void cleanup();
     static Client* get_instance();
     
-    /// @brief Constructs a new Client object.
 private:
-    Client(); // Prevent instantiation
+    Client();
 public:
-    
-    /// @brief Destroys the Client object and releases any allocated resources.
     ~Client();
     
-    /// @brief adds it to the list of opened files and selects it as the current file.
+    /// @brief Opens a file and adds it to the list of opened files
     bool open_file(const std::string& file_path);
     
-    /// @brief Processes a character input from the user.
-    /// @param character the character to process.
+    /// @brief Processes a character input from the user
     void process_character(const char character);
 
-
-    /// @brief Saves the current file.
+    /// @brief Saves the current file
     void CALLBACK save_file(int file_id = -1) const;
 
-    /// @brief Closes the specified file and removes it from the list of opened files.
-    /// @param file_id The unique identifier of the file to close.
+    /// @brief Closes the specified file
     void close_file(int file_id = -1);
 
-    /// @brief Draws the current state of the client using the provided Graphics object.
-    /// @param g the Graphics object used for drawing.
-    void draw(Graphics* g); // Implementation for drawing the client state can be added here.
+    /// @brief Draws the current state of the client
+    void draw(Graphics* g);
 
     inline OpenedFile& get_working_file() { return opened_files[current_file]; }
 
-    void move_left();
-    void move_right();
-    void move_up();
-    void move_down();
-    void jump_left();
-    void jump_right();
+    // Navigation methods
+    void move_left(bool extend_selection = false);
+    void move_right(bool extend_selection = false);
+    void move_up(bool extend_selection = false);
+    void move_down(bool extend_selection = false);
+    void jump_left(bool extend_selection = false);
+    void jump_right(bool extend_selection = false);
 
     void delete_group();
+
+    // Selection methods
+    void start_selection();
+    void clear_selection();
+    
+    // Clipboard methods
+    void copy(HWND hwnd);
+    void cut(HWND hwnd);
+    void paste(HWND hwnd);
+    
+    // Select all
+    void select_all();
 
     void begin_autosave();
     void end_autosave();
 
 private:
-
-
     static Client* instance;
-
-
-    /// @brief The list of opened files.
     std::vector<OpenedFile> opened_files;
-
-    /// @brief The index of the currently active file in the opened_files vector.
     int current_file;
-
     static std::unordered_set<char> insertable_characters;
     void autosave();
-
     HANDLE autosave_timer;
+    bool is_selecting;
 };

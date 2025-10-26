@@ -1,16 +1,21 @@
 #include "opened_file.h"
-
 #include "config.h"
-
+#include "graphics.h"
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <algorithm>
 
 OpenedFile::OpenedFile(const std::string& path)
-    : file_path(path), current_line(0), current_character(0), open(false), past_actions(), past_undos() {
+    : file_path(path),
+      lines(),
+      current_line(0),
+      current_character(0),
+      open(false),
+      past_actions(),
+      past_undos(),
+      selection() {
     std::wifstream file(file_path);
-
-    // Open the file and read its contents into the lines vector.
     if (file.is_open()) {
         open = true;
         std::wstring line;
@@ -19,7 +24,6 @@ OpenedFile::OpenedFile(const std::string& path)
         }
         file.close();
     }
-
     if (lines.empty()) {
         lines.push_back(L"");
     }
@@ -32,7 +36,8 @@ OpenedFile::OpenedFile(const OpenedFile& other)
       current_character(other.current_character),
       open(other.open),
       past_actions(other.past_actions),
-      past_undos(other.past_undos) {}
+      past_undos(other.past_undos),
+      selection(other.selection) {}
 
 OpenedFile& OpenedFile::operator=(const OpenedFile& other) {
     if (this != &other) {
@@ -43,6 +48,7 @@ OpenedFile& OpenedFile::operator=(const OpenedFile& other) {
         open = other.open;
         past_actions = other.past_actions;
         past_undos = other.past_undos;
+        selection = other.selection;
     }
     return *this;
 }
@@ -54,7 +60,8 @@ OpenedFile::OpenedFile(OpenedFile&& other) noexcept
       current_character(other.current_character),
       open(other.open),
       past_actions(std::move(other.past_actions)),
-      past_undos(std::move(other.past_undos)) {
+      past_undos(std::move(other.past_undos)),
+      selection(std::move(other.selection)) {
     other.current_line = 0;
     other.current_character = 0;
     other.open = false;
@@ -69,6 +76,7 @@ OpenedFile& OpenedFile::operator=(OpenedFile&& other) noexcept {
         open = other.open;
         past_actions = std::move(other.past_actions);
         past_undos = std::move(other.past_undos);
+        selection = std::move(other.selection);
 
         other.current_line = 0;
         other.current_character = 0;
@@ -92,6 +100,60 @@ bool OpenedFile::write() const {
     return true;
 }
 
+// Selection methods
+void OpenedFile::start_selection() {
+    selection.start_selection(current_line, current_character);
+}
+
+void OpenedFile::update_selection() {
+    selection.update_selection(current_line, current_character);
+}
+
+void OpenedFile::clear_selection() {
+    selection.clear_selection();
+}
+
+std::wstring OpenedFile::get_selected_text() const {
+    if (!selection.has_selection()) return L"";
+    
+    int start_line, start_char, end_line, end_char;
+    selection.get_normalized_range(start_line, start_char, end_line, end_char);
+    
+    std::wstring result;
+    
+    if (start_line == end_line) {
+        // Selection within single line
+        result = lines[start_line].substr(start_char, end_char - start_char);
+    } else {
+        // Multi-line selection
+        // First line
+        result = lines[start_line].substr(start_char);
+        result += L'\n';
+        
+        // Middle lines
+        for (int i = start_line + 1; i < end_line; ++i) {
+            result += lines[i];
+            result += L'\n';
+        }
+        
+        // Last line
+        result += lines[end_line].substr(0, end_char);
+    }
+    
+    return result;
+}
+
+void OpenedFile::delete_selection() {
+    if (!selection.has_selection()) return;
+    
+    int start_line, start_char, end_line, end_char;
+    selection.get_normalized_range(start_line, start_char, end_line, end_char);
+    
+    delete_range(start_line, start_char, end_line, end_char);
+    clear_selection();
+}
+
+// Edit methods
 void OpenedFile::new_line(int line_number, int character_position, bool move_cursor) {
     if (line_number == -1) {
         line_number = current_line;
@@ -100,13 +162,18 @@ void OpenedFile::new_line(int line_number, int character_position, bool move_cur
         character_position = current_character;
     }
 
-    // Calculate number of spaces before the first character on the line
+    if (selection.has_selection()) {
+        delete_selection();
+        line_number = current_line;
+        character_position = current_character;
+    }
+
     int n_spaces = 0;
     while (n_spaces < static_cast<int>(lines[line_number].size()) && lines[line_number][n_spaces] == ' ') ++n_spaces;
     
-    const wchar_t* deleted_characters = lines[line_number].substr(character_position).c_str();
+    std::wstring deleted_characters = lines[line_number].substr(character_position);
     past_actions.push_back(Edit(
-        [this, line_number, character_position, move_cursor, n_spaces]() {
+        [this, line_number, character_position, move_cursor, n_spaces, deleted_characters = std::move(deleted_characters)]() mutable {
             std::wstring new_line(n_spaces, L' ');
             if (character_position < static_cast<int>(lines[line_number].size())) {
                 new_line += lines[line_number].substr(character_position);
@@ -114,17 +181,17 @@ void OpenedFile::new_line(int line_number, int character_position, bool move_cur
             }
             lines.insert(lines.begin() + line_number + 1, std::move(new_line));
             if (move_cursor) {
-                current_line = line_number + 1;
-                current_character = n_spaces;
+                set_current_line(line_number + 1);
+                set_current_character(n_spaces);
             }
             return true;
         },
-        [this, line_number, character_position, move_cursor, &deleted_characters]() {
+        [this, line_number, character_position, move_cursor, deleted_characters]() {
             lines.erase(lines.begin() + line_number + 1);
             lines[line_number] += deleted_characters;
             if (move_cursor) {
-                current_line = line_number;
-                current_character = character_position;
+                set_current_line(line_number);
+                set_current_character(character_position);
             }
             return true;
         }
@@ -145,53 +212,60 @@ void OpenedFile::insert_character(char character, int line_number, int char_posi
         char_position = current_character;
     }
 
+    if (selection.has_selection()) {
+        delete_selection();
+        line_number = current_line;
+        char_position = current_character;
+    }
+
     if (character == '\t') {
         int tab_size = Config::get_instance()->get_tab_size();
         past_actions.push_back(Edit(
             [this, line_number, char_position, tab_size, move_cursor]() {
                 this->lines[line_number].insert(this->lines[line_number].begin() + char_position, tab_size, ' ');
                 if (move_cursor) {
-                    this->current_line = line_number;
-                    this->current_character = char_position + tab_size;
+                    this->set_current_line(line_number);
+                    this->set_current_character(char_position + tab_size);
                 }
                 return true;
             },
             [this, line_number, char_position, tab_size, move_cursor]() {
                 this->lines[line_number].erase(this->lines[line_number].begin() + char_position, this->lines[line_number].begin() + char_position + tab_size);
                 if (move_cursor) {
-                    this->current_line = line_number;
-                    this->current_character = char_position;
+                    this->set_current_line(line_number);
+                    this->set_current_character(char_position);
                 }
                 return true;
             }
         ));
     } else {
+        wchar_t wch = static_cast<wchar_t>(character);
         past_actions.push_back(Edit(
-            [this, line_number, char_position, character, move_cursor]() {
-                this->lines[line_number].insert(this->lines[line_number].begin() + char_position, character);
+            [this, line_number, char_position, wch, move_cursor]() {
+                this->lines[line_number].insert(this->lines[line_number].begin() + char_position, 1, wch);
                 if (move_cursor) {
-                    this->current_line = line_number;
-                    this->current_character = char_position + 1;
+                    this->set_current_line(line_number);
+                    this->set_current_character(char_position + 1);
                 }
                 return true;
             },
             [this, line_number, char_position, move_cursor]() {
-                this->lines[line_number].erase(this->lines[line_number].begin() + char_position);
+                this->lines[line_number].erase(this->lines[line_number].begin() + char_position, this->lines[line_number].begin() + char_position + 1);
                 if (move_cursor) {
-                    this->current_line = line_number;
-                    this->current_character = char_position;
+                    this->set_current_line(line_number);
+                    this->set_current_character(char_position);
                 }
                 return true;
             }
         ));
     }
     
-
     past_actions.back().edit();
+    past_undos.clear();
+    
     if (static_cast<int>(past_actions.size()) > Config::get_instance()->get_undo_history_size()) {
         past_actions.pop_front();
     }
-    past_undos.clear();
 }
 
 void OpenedFile::delete_character(int line_number, int char_position, bool move_cursor) {
@@ -201,115 +275,113 @@ void OpenedFile::delete_character(int line_number, int char_position, bool move_
     if (char_position == -1) {
         char_position = current_character;
     }
-    if (char_position == 0) {
-        if (line_number == 0) {
-            return; // Can't delete before the start of the file
-        }
-        // Merge with previous line
-        past_actions.push_back(Edit(
-            [this, line_number, move_cursor]() {
-                int prev_line_length = static_cast<int>(lines[line_number - 1].length());
-                lines[line_number - 1] += lines[line_number];
-                lines.erase(lines.begin() + line_number);
-                if (move_cursor) {
-                    current_line = line_number - 1;
-                    current_character = prev_line_length;
-                }
-                return true;
-            },
-            [this, line_number, move_cursor]() {
-                std::wstring merged_part = lines[line_number - 1].substr(lines[line_number - 1].length() - lines[line_number].length());
-                lines.insert(lines.begin() + line_number, merged_part);
-                lines[line_number - 1] = lines[line_number - 1].substr(0, lines[line_number - 1].length() - merged_part.length());
-                if (move_cursor) {
-                    current_line = line_number;
-                    current_character = 0;
-                }
-                return true;
-            }
-        ));
-    } else {
-        wchar_t deleted_char = lines[line_number][char_position - 1];
-        past_actions.push_back(Edit(
-            [this, line_number, char_position, move_cursor]() {
-                this->lines[line_number].erase(this->lines[line_number].begin() + char_position - 1);
-                if (move_cursor) {
-                    this->current_line = line_number;
-                    this->current_character = char_position - 1;
-                }
-                return true;
-            },
-            [this, line_number, char_position, move_cursor, deleted_char]() {
-                this->lines[line_number].insert(this->lines[line_number].begin() + char_position - 1, deleted_char);
-                if (move_cursor) {
-                    this->current_line = line_number;
-                    this->current_character = char_position;
-                }
-                return true;
-            }
-        ));
+
+    if (selection.has_selection()) {
+        delete_selection();
+        return;
     }
 
+    if (char_position > 0) {
+        wchar_t deleted = lines[line_number][char_position - 1];
+        past_actions.push_back(Edit(
+            [this, line_number, char_position, move_cursor, deleted]() {
+                this->lines[line_number].erase(this->lines[line_number].begin() + char_position - 1, this->lines[line_number].begin() + char_position);
+                if (move_cursor) {
+                    this->set_current_line(line_number);
+                    this->set_current_character(char_position - 1);
+                }
+                return true;
+            },
+            [this, line_number, char_position, move_cursor, deleted]() {
+                this->lines[line_number].insert(this->lines[line_number].begin() + char_position - 1, 1, deleted);
+                if (move_cursor) {
+                    this->set_current_line(line_number);
+                    this->set_current_character(char_position);
+                }
+                return true;
+            }
+        ));
         
-    past_actions.back().edit();
-    if (static_cast<int>(past_actions.size()) > Config::get_instance()->get_undo_history_size()) {
-        past_actions.pop_front();
+        past_actions.back().edit();
+        past_undos.clear();
+        
+        if (static_cast<int>(past_actions.size()) > Config::get_instance()->get_undo_history_size()) {
+            past_actions.pop_front();
+        }
     }
-    past_undos.clear();
 }
 
 void OpenedFile::delete_range(int start_line, int start_char, int end_line, int end_char, bool move_cursor) {
+    if (start_line == -1) start_line = current_line;
+    if (start_char == -1) start_char = current_character;
+    if (end_line == -1) end_line = current_line;
+    if (end_char == -1) end_char = current_character;
 
-    std::shared_ptr<std::vector<std::wstring>> deleted_lines = std::make_shared<std::vector<std::wstring>>();
-    if (start_line == end_line) {
-        deleted_lines->push_back(lines[start_line].substr(start_char, end_char - start_char));
-    } else {
-        deleted_lines->push_back(lines[start_line].substr(start_char));
-        for (int i = start_line + 1; i < end_line; ++i) {
-            deleted_lines->push_back(lines[i]);
-        }
-        deleted_lines->push_back(lines[end_line].substr(0, end_char));
+    if (start_line > end_line || (start_line == end_line && start_char > end_char)) {
+        std::swap(start_line, end_line);
+        std::swap(start_char, end_char);
     }
 
-    // Declare here to capture in lambda
-    int cc = current_character;
-    int cl = current_line;
+    std::wstring deleted_content;
+    int num_lines_deleted = 0;
+
+    if (start_line == end_line) {
+        deleted_content = lines[start_line].substr(start_char, end_char - start_char);
+        num_lines_deleted = 0;
+    } else {
+        deleted_content = lines[start_line].substr(start_char) + L"\n";
+        for (int l = start_line + 1; l < end_line; ++l) {
+            deleted_content += lines[l] + L"\n";
+        }
+        deleted_content += lines[end_line].substr(0, end_char);
+        num_lines_deleted = end_line - start_line;
+    }
 
     past_actions.push_back(Edit(
-        [this, start_line, start_char, move_cursor, deleted_lines, end_line, end_char]() {
-            if (start_line == end_line) {
-                this->lines[start_line].erase(start_char, (*deleted_lines)[0].size());
+        [this, start_line, start_char, end_line, end_char, num_lines_deleted, move_cursor]() {
+            if (num_lines_deleted == 0) {
+                this->lines[start_line].erase(start_char, end_char - start_char);
             } else {
                 this->lines[start_line].erase(start_char);
                 this->lines[start_line] += this->lines[end_line].substr(end_char);
-                this->lines.erase(this->lines.begin() + start_line + 1, this->lines.begin() + end_line);
-                this->lines[start_line + 1].erase(end_char);
+                this->lines.erase(this->lines.begin() + start_line + 1, this->lines.begin() + end_line + 1);
             }
             if (move_cursor) {
-                this->current_line = start_line;
-                this->current_character = start_char;
+                set_current_line(start_line);
+                set_current_character(start_char);
             }
             return true;
         },
-        [this, start_line, start_char, deleted_lines, move_cursor, cc, cl]() {
-            if (deleted_lines->size() == 1) {
-                this->lines[start_line].insert(start_char, (*deleted_lines)[0]);
+        [this, start_line, start_char, deleted_content, num_lines_deleted, move_cursor]() {
+            if (num_lines_deleted == 0) {
+                this->lines[start_line].insert(start_char, deleted_content);
             } else {
-                std::wstring first_part = this->lines[start_line].substr(0, start_char);
-                std::wstring last_part = this->lines[start_line].substr(start_char);
-                this->lines[start_line] = first_part + (*deleted_lines)[0];
-                for (size_t i = 1; i < deleted_lines->size(); ++i) {
-                    this->lines.insert(this->lines.begin() + start_line + i, (*deleted_lines)[i]);
+                std::vector<std::wstring> restored_lines;
+                std::wstring current_line_text;
+                for (wchar_t ch : deleted_content) {
+                    if (ch == L'\n') {
+                        restored_lines.push_back(current_line_text);
+                        current_line_text.clear();
+                    } else {
+                        current_line_text += ch;
+                    }
                 }
-            }
-            if (move_cursor) {
-                this->current_line = cl;
-                this->current_character = cc;
+                restored_lines.push_back(current_line_text);
+                std::wstring after_cursor = this->lines[start_line].substr(start_char);
+                this->lines[start_line] = this->lines[start_line].substr(0, start_char) + restored_lines[0];
+                for (size_t i = 1; i < restored_lines.size() - 1; ++i) {
+                    this->lines.insert(this->lines.begin() + start_line + i, restored_lines[i]);
+                }
+                this->lines.insert(this->lines.begin() + start_line + restored_lines.size() - 1,
+                                 restored_lines[restored_lines.size() - 1] + after_cursor);
             }
             return true;
-        }));
+        }
+    ));
+    
     past_actions.back().edit();
     past_undos.clear();
+    
     if (static_cast<int>(past_actions.size()) > Config::get_instance()->get_undo_history_size()) {
         past_actions.pop_front();
     }
@@ -337,11 +409,11 @@ bool OpenedFile::redo() {
 
 void OpenedFile::draw(Graphics* g, int start_x, int start_y, int max_chars_per_line, int max_lines) const {
     const float& font_size = Config::get_instance()->get_font_size();
+    int line_height = static_cast<int>(Config::get_instance()->get_font_size() * 1.25f);
 
     // Draw line numbers if enabled
     if (Config::get_instance()->get_show_line_numbers()) {
         g->SetColor(Config::get_instance()->get_line_number_color());
-        int line_height = static_cast<int>(Config::get_instance()->get_font_size() * 1.25f);
         for (int i = 0; i < max_lines && i < static_cast<int>(lines.size()); ++i) {
             std::wstring line_number = std::to_wstring(i + 1);
             float numbers_x = Config::get_instance()->get_explorer_width() + Config::get_instance()->get_left_margin() - font_size * 0.6f * (2 + (i + 1 >= 10) + (i + 1 >= 100) + (i + 1 >= 1000));
@@ -350,22 +422,54 @@ void OpenedFile::draw(Graphics* g, int start_x, int start_y, int max_chars_per_l
     }
 
     float x = Config::get_instance()->get_left_margin() + Config::get_instance()->get_explorer_width();
-    int y = 0;
+    
+    // Get normalized selection range if active
+    int sel_start_line = -1, sel_start_char = -1, sel_end_line = -1, sel_end_char = -1;
+    bool has_sel = selection.has_selection();
+    if (has_sel) {
+        selection.get_normalized_range(sel_start_line, sel_start_char, sel_end_line, sel_end_char);
+    }
 
-    g->SetColor(Config::get_instance()->get_text_color());
-    int line_height = static_cast<int>(Config::get_instance()->get_font_size() * 1.25f);
-
+    // Draw text and selection
     for (int i = 0; i < max_lines && i < static_cast<int>(lines.size()); ++i) {
+        float line_y = static_cast<float>(start_y + i * line_height);
         std::wstring line = lines[i];
+        
+        // Draw selection highlighting for this line
+        if (has_sel && i >= sel_start_line && i <= sel_end_line) {
+            int highlight_start = 0;
+            int highlight_end = static_cast<int>(line.length());
+            
+            if (i == sel_start_line) {
+                highlight_start = sel_start_char;
+            }
+            if (i == sel_end_line) {
+                highlight_end = sel_end_char;
+            }
+            
+            if (highlight_start < highlight_end) {
+                float highlight_x = x + highlight_start * font_size * 0.6f;
+                float highlight_width = (highlight_end - highlight_start) * font_size * 0.6f;
+                
+                // Draw selection background
+                g->SetColor(D2D1::ColorF(D2D1::ColorF::LightBlue, 0.4f));
+                g->FillRect(highlight_x, line_y, highlight_width, static_cast<float>(line_height));
+            }
+        }
+        
+        // Draw text
+        g->SetColor(Config::get_instance()->get_text_color());
         if (start_x > 0 || start_x + max_chars_per_line < static_cast<int>(line.length())) {
             std::wstring substringed_line = line.substr(start_x, max_chars_per_line);
-            g->DrawString(substringed_line.c_str(), static_cast<int>(line.length()), static_cast<float>(start_x), static_cast<float>(start_y + i * line_height), 800.0f, static_cast<float>(line_height));
+            g->DrawString(substringed_line.c_str(), static_cast<int>(substringed_line.length()), 
+                         static_cast<float>(start_x), line_y, 800.0f, static_cast<float>(line_height));
         } else {
-            g->DrawString(line.c_str(), static_cast<int>(line.length()), x, static_cast<float>(y + i * line_height), 800.0f, static_cast<float>(line_height));
+            g->DrawString(line.c_str(), static_cast<int>(line.length()), x, line_y, 
+                         800.0f, static_cast<float>(line_height));
         }
     }
 
-    // Draw the indicator
+    // Draw the cursor indicator
     g->SetColor(Config::get_instance()->get_indicator_color());
     g->DrawLine(
         current_character * font_size * 0.6f + x,

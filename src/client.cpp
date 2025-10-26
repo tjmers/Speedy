@@ -26,7 +26,7 @@ void Client::init() {
         insertable_characters.insert(c);
     }
 
-    // Add backspace and carrige return
+    // Add backspace and carriage return
     insertable_characters.insert(VK_BACK);
     insertable_characters.insert('\r');
 
@@ -61,22 +61,43 @@ bool Client::open_file(const std::string& file_path) {
 void Client::process_character(const char character) {
     // Do not insert a character if it isn't allowed
     if (!insertable_characters.contains(character)) return;
+    
+    OpenedFile& working_file = opened_files[current_file];
+    
+    // If there's a selection and user types, delete the selection first
+    if (working_file.get_selection().has_selection() && character != VK_BACK) {
+        working_file.delete_selection();
+    }
+    
     switch (character) {
-        case '\r': // Carrige return (enter key)
-            opened_files[current_file].new_line();
+        case '\r': // Carriage return (enter key)
+            working_file.new_line();
             break;
         case VK_BACK:
-            opened_files[current_file].delete_character();
+            // If there's a selection, delete it; otherwise delete character
+            if (working_file.get_selection().has_selection()) {
+                working_file.delete_selection();
+            } else {
+                working_file.delete_character();
+            }
             break;
         default:
-            opened_files[current_file].insert_character(character);
+            working_file.insert_character(character);
             break;
     }
 }
 
-void Client::move_left() {
-
+void Client::move_left(bool extend_selection) {
     OpenedFile& working_file = opened_files[current_file];
+    
+    if (extend_selection) {
+        if (!working_file.get_selection().has_selection()) {
+            working_file.start_selection();
+        }
+    } else {
+        working_file.clear_selection();
+    }
+    
     // Move cursor left
     if (working_file.get_current_character_index() == 0 && working_file.get_current_line() > 0) {
         // Move to end of previous line
@@ -86,97 +107,292 @@ void Client::move_left() {
     } else if (working_file.get_current_character_index() > 0) {
         working_file.set_current_character(working_file.get_current_character_index() - 1);
     }
+    
+    if (extend_selection) {
+        working_file.update_selection();
+    }
 }
 
-void Client::move_right() {
-
+void Client::move_right(bool extend_selection) {
     OpenedFile& working_file = opened_files[current_file];
+    
+    if (extend_selection) {
+        if (!working_file.get_selection().has_selection()) {
+            working_file.start_selection();
+        }
+    } else {
+        working_file.clear_selection();
+    }
+    
     // Move cursor right
-    if (working_file.get_current_character_index() == working_file.get_num_characters() && working_file.get_current_line() < working_file.get_num_lines() - 1) {
+    if (working_file.get_current_character_index() == working_file.get_num_characters(working_file.get_current_line()) && 
+        working_file.get_current_line() < working_file.get_num_lines() - 1) {
         // Move to start of next line
         int next_line = working_file.get_current_line() + 1;
         working_file.set_current_line(next_line);
         working_file.set_current_character(0);
-    } else if (working_file.get_current_character_index() < working_file.get_num_characters()) {
+    } else if (working_file.get_current_character_index() < working_file.get_num_characters(working_file.get_current_line())) {
         working_file.set_current_character(working_file.get_current_character_index() + 1);
+    }
+    
+    if (extend_selection) {
+        working_file.update_selection();
     }
 }
 
-void Client::move_up() {
-
+void Client::move_up(bool extend_selection) {
     OpenedFile& working_file = opened_files[current_file];
+    
+    if (extend_selection) {
+        if (!working_file.get_selection().has_selection()) {
+            working_file.start_selection();
+        }
+    } else {
+        working_file.clear_selection();
+    }
+    
     // Move cursor up
     if (working_file.get_current_line() > 0) {
         working_file.set_current_line(working_file.get_current_line() - 1);
-        working_file.set_current_character(std::min(working_file.get_current_character_index(), working_file.get_num_characters()));
+        working_file.set_current_character(std::min(working_file.get_current_character_index(), 
+                                                   working_file.get_num_characters(working_file.get_current_line())));
     } else {
-        // Set to first character
+        // Already at top: Stay put or go to line start?
         working_file.set_current_character(0);
+    }
+    
+    if (extend_selection) {
+        working_file.update_selection();
     }
 }
 
-void Client::move_down() {
-
+void Client::move_down(bool extend_selection) {
     OpenedFile& working_file = opened_files[current_file];
+    
+    if (extend_selection) {
+        if (!working_file.get_selection().has_selection()) {
+            working_file.start_selection();
+        }
+    } else {
+        working_file.clear_selection();
+    }
+    
     // Move cursor down
     if (working_file.get_current_line() < working_file.get_num_lines() - 1) {
         working_file.set_current_line(working_file.get_current_line() + 1);
-        working_file.set_current_character(std::min(working_file.get_current_character_index(), working_file.get_num_characters()));
+        working_file.set_current_character(std::min(working_file.get_current_character_index(), 
+                                                   working_file.get_num_characters(working_file.get_current_line())));
     } else {
-        // Set to last character
-        working_file.set_current_character(working_file.get_num_characters());
+        // Already at bottom: Go to end of line
+        working_file.set_current_character(working_file.get_num_characters(working_file.get_current_line()));
+    }
+    
+    if (extend_selection) {
+        working_file.update_selection();
     }
 }
 
-void Client::jump_left() {
-
+void Client::jump_left(bool extend_selection) {
     OpenedFile& working_file = opened_files[current_file];
+    
+    if (extend_selection && !working_file.get_selection().has_selection()) {
+        working_file.start_selection();
+    }
+    
     const std::wstring& line_contents = working_file.get_current_line_contents();
     int char_index = working_file.get_current_character_index();
+    
+    // Skip trailing spaces
     while (char_index > 0 && line_contents[char_index - 1] == L' ') {
         --char_index;
     }
+    
+    // Skip to start of word
     while (char_index > 0 && line_contents[char_index - 1] != L' ') {
         --char_index;
     }
+    
     working_file.set_current_character(char_index);
+    
+    if (extend_selection) {
+        working_file.update_selection();
+    } else {
+        working_file.clear_selection();
+    }
 }
 
-void Client::jump_right() {
-
+void Client::jump_right(bool extend_selection) {
     OpenedFile& working_file = opened_files[current_file];
+    
+    if (extend_selection && !working_file.get_selection().has_selection()) {
+        working_file.start_selection();
+    }
+    
     const std::wstring& line_contents = working_file.get_current_line_contents();
     int char_index = working_file.get_current_character_index();
-    while (char_index < working_file.get_num_characters() && line_contents[char_index] == L' ') {
+    
+    // Skip leading spaces
+    while (char_index < working_file.get_num_characters(working_file.get_current_line()) && line_contents[char_index] == L' ') {
         ++char_index;
     }
-    while (char_index < working_file.get_num_characters() && line_contents[char_index] != L' ') {
+    
+    // Skip to end of word
+    while (char_index < working_file.get_num_characters(working_file.get_current_line()) && line_contents[char_index] != L' ') {
         ++char_index;
     }
+    
     working_file.set_current_character(char_index);
+    
+    if (extend_selection) {
+        working_file.update_selection();
+    } else {
+        working_file.clear_selection();
+    }
 }
 
 void Client::delete_group() {
-
     OpenedFile& working_file = opened_files[current_file];
-    // Delete characters to the left of the cursor until a space or the start of the line is reached
-    int first_char = working_file.get_current_character_index() - 2;
-    if (first_char < 0) {
+    
+    // Can't delete if we're at the start of the file
+    if (working_file.get_current_character_index() == 0 && working_file.get_current_line() == 0) {
+        return;
+    }
+    
+    // If selection active, delete the whole range instead
+    if (working_file.get_selection().has_selection()) {
+        working_file.delete_selection();
+        return;
+    }
+    
+    int current_char_index = working_file.get_current_character_index();
+    
+    // If at the start of a line, just delete one character (merge with previous line)
+    if (current_char_index == 0) {
         working_file.delete_character();
         return;
     }
-    if (working_file.get_current_character() == L' ') {
-        // Keep going until non-whitespace or start of line
-        while (first_char >= 0 && working_file.get_current_line_contents()[first_char] == L' ') {
-            --first_char;
+    
+    const std::wstring& line_contents = working_file.get_current_line_contents();
+    
+    // Start from the position before cursor
+    int delete_to = current_char_index;
+    int delete_from = current_char_index - 1;
+    
+    // Step 1: Skip backwards over any spaces
+    while (delete_from > 0 && line_contents[delete_from] == L' ') {
+        --delete_from;
+    }
+    
+    // Step 2: If we found spaces, check if there's a word before them
+    if (delete_from < current_char_index - 1) {
+        // We skipped some spaces
+        if (delete_from >= 0 && line_contents[delete_from] != L' ') {
+            // There's a word before the spaces, delete the word too
+            while (delete_from > 0 && line_contents[delete_from - 1] != L' ') {
+                --delete_from;
+            }
+        } else {
+            // Only spaces before cursor, just delete the spaces
+            delete_from = delete_from + 1; // Move back to first space
         }
     } else {
-        // Keep going until whitespace or start of line
-        while (first_char >= 0 && working_file.get_current_line_contents()[first_char] != L' ') {
-            --first_char;
+        // No spaces immediately before cursor, we're at a word
+        // Delete backwards through the word
+        while (delete_from > 0 && line_contents[delete_from - 1] != L' ') {
+            --delete_from;
         }
     }
-    working_file.delete_range(working_file.get_current_line(), first_char + 1, working_file.get_current_line(), working_file.get_current_character_index());
+    
+    // Now delete from delete_from to delete_to
+    working_file.delete_range(
+        working_file.get_current_line(), 
+        delete_from, 
+        working_file.get_current_line(), 
+        delete_to
+    );
+}
+
+void Client::copy(HWND hwnd) {
+    OpenedFile& working_file = opened_files[current_file];
+    if (!working_file.get_selection().has_selection()) return;
+    
+    std::wstring selected_text = working_file.get_selected_text();
+    
+    if (OpenClipboard(hwnd)) {
+        EmptyClipboard();
+        
+        size_t size = (selected_text.length() + 1) * sizeof(wchar_t);
+        HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, size);
+        if (hMem) {
+            wchar_t* pMem = static_cast<wchar_t*>(GlobalLock(hMem));
+            if (pMem) {
+                wcscpy_s(pMem, selected_text.length() + 1, selected_text.c_str());
+                GlobalUnlock(hMem);
+                SetClipboardData(CF_UNICODETEXT, hMem);
+            }
+        }
+        CloseClipboard();
+    }
+}
+
+void Client::cut(HWND hwnd) {
+    OpenedFile& working_file = opened_files[current_file];
+    if (!working_file.get_selection().has_selection()) return;
+    
+    copy(hwnd);
+    working_file.delete_selection();
+}
+
+void Client::paste(HWND hwnd) {
+    OpenedFile& working_file = opened_files[current_file];
+    
+    // If there's a selection, delete it first
+    if (working_file.get_selection().has_selection()) {
+        working_file.delete_selection();
+    }
+    
+    if (OpenClipboard(hwnd)) {
+        HANDLE hData = GetClipboardData(CF_UNICODETEXT);
+        if (hData) {
+            wchar_t* pText = static_cast<wchar_t*>(GlobalLock(hData));
+            if (pText) {
+                std::wstring text(pText);
+                GlobalUnlock(hData);
+                
+                // Insert the text character by character
+                for (wchar_t wc : text) {
+                    if (wc == L'\n' || wc == L'\r') {
+                        if (wc == L'\r') {
+                            working_file.new_line();
+                        }
+                        // Skip \n if it follows \r (Windows line endings)
+                        continue;
+                    } else {
+                        char c = static_cast<char>(wc);
+                        if (insertable_characters.contains(c)) {
+                            working_file.insert_character(c);
+                        }
+                    }
+                }
+            }
+        }
+        CloseClipboard();
+    }
+}
+
+void Client::select_all() {
+    OpenedFile& working_file = opened_files[current_file];
+    
+    // Move to start of file
+    working_file.set_current_line(0);
+    working_file.set_current_character(0);
+    working_file.start_selection();
+    
+    // Move to end of file
+    int last_line = working_file.get_num_lines() - 1;
+    working_file.set_current_line(last_line);
+    working_file.set_current_character(working_file.get_num_characters(last_line));
+    working_file.update_selection();
 }
 
 void Client::draw(Graphics* g) {
@@ -186,7 +402,6 @@ void Client::draw(Graphics* g) {
     const OpenedFile& file = opened_files[current_file];
 
     file.draw(g, 0, 0, 80, 40);
-
 }
 
 void Client::save_file(int file_id) const {
@@ -199,7 +414,6 @@ void Client::close_file(int file_id) {
     opened_files.erase(opened_files.begin() + file_id);
     if (current_file >= static_cast<int>(opened_files.size())) current_file = static_cast<int>(opened_files.size()) - 1;
 }
-
 
 void Client::begin_autosave() {
 #pragma GCC diagnostic push

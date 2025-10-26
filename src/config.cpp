@@ -3,7 +3,7 @@
 
 Config* Config::instance = nullptr;
 
-// Default constructor initializing default values
+// Default constructor initializing default values (order matches header decls)
 Config::Config() : 
     background_color(D2D1::ColorF(0.2f, 0.2f, 0.2f, 1.0f)),
     line_spacing(1.0f),
@@ -20,7 +20,8 @@ Config::Config() :
     recent_files(),
     last_opened_file(""),
     working_directory(""),
-    undo_history_size(50)
+    undo_history_size(50),
+    selection_color(D2D1::ColorF(0.2f, 0.5f, 1.0f, 0.3f))  // Semi-transparent blue for selections
 {}
 
 void Config::create() {
@@ -63,6 +64,8 @@ void Config::save() {
         config_file << "\n";
         config_file << "last_opened_file " << last_opened_file << "\n";
         config_file << "working_directory " << working_directory << "\n";
+        config_file << "undo_history_size " << undo_history_size << "\n";
+        config_file << "selection_color " << selection_color.r << " " << selection_color.g << " " << selection_color.b << " " << selection_color.a << "\n";
         config_file.close();
     }
 }
@@ -119,6 +122,12 @@ bool Config::load(const std::string& file_name) {
             config_file >> last_opened_file;
         } else if (key == "working_directory") {
             config_file >> working_directory;
+        } else if (key == "undo_history_size") {
+            config_file >> undo_history_size;
+        } else if (key == "selection_color") {
+            float r, g, b, a;
+            config_file >> r >> g >> b >> a;
+            selection_color = D2D1::ColorF(r, g, b, a);
         } else {
             // Unknown key, skip the rest of the line
             std::string rest_of_line;
