@@ -118,5 +118,5 @@ void Graphics::FillRect(const D2D1_RECT_F& rect)
 
 void Graphics::DrawString(const wchar_t* str, int str_len, float x, float y, float width, float height)
 {
-    render_target->DrawTextA(str, str_len, text_format, D2D1::RectF(x, y, x + width, y + height), brush);
+    render_target->DrawText(str, str_len, text_format, D2D1::RectF(x, y, x + width, y + height), brush);
 }

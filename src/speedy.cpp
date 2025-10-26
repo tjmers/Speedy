@@ -1,3 +1,4 @@
+// speedy.cpp remains mostly unchanged, but ensure consistency with config
 #include "client.h"
 #include "command_controller.h"
 #include "config.h"
@@ -7,14 +8,8 @@
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 Graphics* g;
 
-constexpr int LINE_HEIGHT = 16;
-constexpr int LINE_SPACING = 8; // the space in between lines
-constexpr int LINE_SPACING_AND_HEIGHT = 24;
-constexpr int ONE_HALF_LINE_SPACING = LINE_SPACING / 2;
-constexpr int MAX_CHARS_PER_LINE = 30;
 int client_width;
 int client_height;
-constexpr int SPACING_LEFT = 64;
 
 bool show_cursor;
 
@@ -96,8 +91,6 @@ int CALLBACK WinMain(
 	
 	client_width = STARTING_SCREEN_WIDTH;
 	client_height = STARTING_SCREEN_HEIGHT;
-	
-	
 	
 	ShowWindow(hWnd, SW_SHOW);
 	UpdateWindow(hWnd);

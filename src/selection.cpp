@@ -44,3 +44,28 @@ void Selection::get_normalized_range(int& out_start_line, int& out_start_char,
         out_end_char = start_char;
     }
 }
+
+bool Selection::is_position_selected(int line, int character) const {
+    if (!is_active) return false;
+    
+    int norm_start_line, norm_start_char, norm_end_line, norm_end_char;
+    get_normalized_range(norm_start_line, norm_start_char, norm_end_line, norm_end_char);
+    
+    if (line < norm_start_line || line > norm_end_line) {
+        return false;
+    }
+    
+    if (line == norm_start_line && line == norm_end_line) {
+        return character >= norm_start_char && character < norm_end_char;
+    }
+    
+    if (line == norm_start_line) {
+        return character >= norm_start_char;
+    }
+    
+    if (line == norm_end_line) {
+        return character < norm_end_char;
+    }
+    
+    return true;
+}

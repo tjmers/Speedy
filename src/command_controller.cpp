@@ -30,6 +30,25 @@ bool CommandController::run_commands() const {
         down[i] = key_state[i] & 0x80;
     }
     
+    // Map VK_LSHIFT and VK_RSHIFT to VK_SHIFT for easier matching
+    if (down[VK_LSHIFT] || down[VK_RSHIFT]) {
+        down[VK_SHIFT] = true;
+        down[VK_LSHIFT] = false;  // Clear the left/right shift keys so they don't interfere
+        down[VK_RSHIFT] = false;
+    }
+    // Map VK_LCONTROL and VK_RCONTROL to VK_CONTROL for easier matching
+    if (down[VK_LCONTROL] || down[VK_RCONTROL]) {
+        down[VK_CONTROL] = true;
+        down[VK_LCONTROL] = false;  // Clear the left/right control keys
+        down[VK_RCONTROL] = false;
+    }
+    // Map VK_LMENU and VK_RMENU to VK_MENU for easier matching
+    if (down[VK_LMENU] || down[VK_RMENU]) {
+        down[VK_MENU] = true;
+        down[VK_LMENU] = false;  // Clear the left/right alt keys
+        down[VK_RMENU] = false;
+    }
+    
     for (const Command& c : commands) {
         if (c.get_key_requirements() == down) {
             c.execute();
@@ -136,60 +155,50 @@ bool CommandController::load_commands() {
                 });
             } else if (action_name == "SELECT_ALL") {
                 action_functions.push_back([this](){this->client->select_all();});
-            } else if (action_name == "DELETE") {
-                action_functions.push_back([this](){
-                    OpenedFile& file = this->client->get_working_file();
-                    if (file.get_selection().has_selection()) {
-                        file.delete_selection();
-                    } else {
-                        int line = file.get_current_line();
-                        int pos = file.get_current_character_index();
-                        if (pos < file.get_num_characters(line)) {
-                            file.delete_character(line, pos + 1, false);
-                        } else if (line < file.get_num_lines() - 1) {
-                            // Delete newline - merge with next line
-                            file.delete_character(line + 1, 0, false);
-                        }
-                    }
-                });
-            } else {
-                // Log info here
             }
         }
-        commands.emplace_back(command_name, description, actions, get_bools_from_string(key_reqs), [action_functions](){for (const auto& f : action_functions)f();});
+
+        // Combine actions into single lambda
+        std::function<void()> command_action = [action_functions = std::move(action_functions)]() {
+            for (const auto& f : action_functions) {
+                f();
+            }
+        };
+
+        std::array<bool, 256> key_req = get_bools_from_string(key_reqs);
+        commands.emplace_back(command_name, description, actions, key_req, command_action);
     }
 
+    commands_file.close();
     return true;
-
 }
 
 void CommandController::get_default_commands() {
-
-    // Arrow Keys
+    // Movement commands
     commands.emplace_back(
         "Move Left",
-        "Moves the cursor to the left by one character, or up a line if at the beginning",
+        "Moves the cursor left one character",
         "CHAR_LEFT",
         std::vector<char>({VK_LEFT}),
         [this] () {this->client->move_left();}
     );
     commands.emplace_back(
         "Move Right",
-        "Moves the cursor to the right by one character, or down a line if at the end",
+        "Moves the cursor right one character",
         "CHAR_RIGHT",
         std::vector<char>({VK_RIGHT}),
         [this] () {this->client->move_right();}
     );
     commands.emplace_back(
         "Move Up",
-        "Moves the cursor up a line",
+        "Moves the cursor up one line",
         "CHAR_UP",
         std::vector<char>({VK_UP}),
         [this] () {this->client->move_up();}
     );
     commands.emplace_back(
         "Move Down",
-        "Moves the cursor down a line",
+        "Moves the cursor down one line",
         "CHAR_DOWN",
         std::vector<char>({VK_DOWN}),
         [this] () {this->client->move_down();}

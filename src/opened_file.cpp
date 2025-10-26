@@ -418,7 +418,7 @@ void OpenedFile::draw(Graphics* g, int start_x, int start_y, int max_chars_per_l
             std::wstring line_number = std::to_wstring(i + 1);
             float numbers_x = Config::get_instance()->get_explorer_width() + Config::get_instance()->get_left_margin() - font_size * 0.6f * (2 + (i + 1 >= 10) + (i + 1 >= 100) + (i + 1 >= 1000));
             g->DrawString(line_number.c_str(), static_cast<int>(line_number.length()), numbers_x, static_cast<float>(start_y + i * line_height), 50.0f, static_cast<float>(line_height));
-        }
+        }   
     }
 
     float x = Config::get_instance()->get_left_margin() + Config::get_instance()->get_explorer_width();
@@ -453,7 +453,7 @@ void OpenedFile::draw(Graphics* g, int start_x, int start_y, int max_chars_per_l
                 
                 // Draw selection background
                 g->SetColor(D2D1::ColorF(D2D1::ColorF::LightBlue, 0.4f));
-                g->FillRect(highlight_x, line_y, highlight_width, static_cast<float>(line_height));
+                g->FillRect(highlight_x, line_y, highlight_x + highlight_width, line_y + line_height);
             }
         }
         

@@ -1,4 +1,10 @@
 #include "client.h"
+#include "selection.h"
+#include <cwctype>  // For iswalnum
+
+// Declare globals from speedy.cpp
+extern int client_width;
+extern int client_height;
 
 std::unordered_set<char> Client::insertable_characters;
 
@@ -21,7 +27,7 @@ void Client::init() {
     }
 
     // Add special characters
-    std::string char_to_insert = " `~!@#$%^&*()-_=+[{]}\\|;:\'\",<.>/?";
+    std::string char_to_insert = " `~!@#$%^&*()-_=+[{]}\\|;:\'\",<.>/?"; // Fixed missing chars
     for (char c : char_to_insert) {
         insertable_characters.insert(c);
     }
@@ -87,20 +93,28 @@ void Client::process_character(const char character) {
     }
 }
 
+// Fixed movement functions for client.cpp
+
 void Client::move_left(bool extend_selection) {
     OpenedFile& working_file = opened_files[current_file];
     
-    if (extend_selection) {
-        if (!working_file.get_selection().has_selection()) {
-            working_file.start_selection();
-        }
-    } else {
+    // If not extending and there's a selection, move to start of selection and clear
+    if (!extend_selection && working_file.get_selection().has_selection()) {
+        int start_line, start_char, end_line, end_char;
+        working_file.get_selection().get_normalized_range(start_line, start_char, end_line, end_char);
+        working_file.set_current_line(start_line);
+        working_file.set_current_character(start_char);
         working_file.clear_selection();
+        return;
+    }
+    
+    // Start selection if extending and no selection exists yet
+    if (extend_selection && !working_file.get_selection().has_selection()) {
+        working_file.start_selection();
     }
     
     // Move cursor left
     if (working_file.get_current_character_index() == 0 && working_file.get_current_line() > 0) {
-        // Move to end of previous line
         int prev_line = working_file.get_current_line() - 1;
         working_file.set_current_line(prev_line);
         working_file.set_current_character(working_file.get_num_characters(prev_line));
@@ -108,28 +122,33 @@ void Client::move_left(bool extend_selection) {
         working_file.set_current_character(working_file.get_current_character_index() - 1);
     }
     
+    // Update or clear selection based on extend_selection flag
     if (extend_selection) {
         working_file.update_selection();
+    } else {
+        working_file.clear_selection();
     }
 }
 
 void Client::move_right(bool extend_selection) {
     OpenedFile& working_file = opened_files[current_file];
     
-    if (extend_selection) {
-        if (!working_file.get_selection().has_selection()) {
-            working_file.start_selection();
-        }
-    } else {
+    if (!extend_selection && working_file.get_selection().has_selection()) {
+        int start_line, start_char, end_line, end_char;
+        working_file.get_selection().get_normalized_range(start_line, start_char, end_line, end_char);
+        working_file.set_current_line(end_line);
+        working_file.set_current_character(end_char);
         working_file.clear_selection();
+        return;
     }
     
-    // Move cursor right
+    if (extend_selection && !working_file.get_selection().has_selection()) {
+        working_file.start_selection();
+    }
+    
     if (working_file.get_current_character_index() == working_file.get_num_characters(working_file.get_current_line()) && 
         working_file.get_current_line() < working_file.get_num_lines() - 1) {
-        // Move to start of next line
-        int next_line = working_file.get_current_line() + 1;
-        working_file.set_current_line(next_line);
+        working_file.set_current_line(working_file.get_current_line() + 1);
         working_file.set_current_character(0);
     } else if (working_file.get_current_character_index() < working_file.get_num_characters(working_file.get_current_line())) {
         working_file.set_current_character(working_file.get_current_character_index() + 1);
@@ -137,82 +156,108 @@ void Client::move_right(bool extend_selection) {
     
     if (extend_selection) {
         working_file.update_selection();
+    } else {
+        working_file.clear_selection();
     }
 }
 
 void Client::move_up(bool extend_selection) {
     OpenedFile& working_file = opened_files[current_file];
     
-    if (extend_selection) {
-        if (!working_file.get_selection().has_selection()) {
-            working_file.start_selection();
-        }
-    } else {
+    if (!extend_selection && working_file.get_selection().has_selection()) {
+        int start_line, start_char, end_line, end_char;
+        working_file.get_selection().get_normalized_range(start_line, start_char, end_line, end_char);
+        working_file.set_current_line(start_line);
+        working_file.set_current_character(start_char);
         working_file.clear_selection();
+        return;
     }
     
-    // Move cursor up
+    if (extend_selection && !working_file.get_selection().has_selection()) {
+        working_file.start_selection();
+    }
+    
     if (working_file.get_current_line() > 0) {
+        int target_col = working_file.get_current_character_index();
         working_file.set_current_line(working_file.get_current_line() - 1);
-        working_file.set_current_character(std::min(working_file.get_current_character_index(), 
-                                                   working_file.get_num_characters(working_file.get_current_line())));
-    } else {
-        // Already at top: Stay put or go to line start?
-        working_file.set_current_character(0);
-    }
-    
-    if (extend_selection) {
-        working_file.update_selection();
+        int max_col = working_file.get_num_characters(working_file.get_current_line());
+        working_file.set_current_character(std::min(target_col, max_col));
+        
+        if (extend_selection) {
+            working_file.update_selection();
+        } else {
+            working_file.clear_selection();
+        }
     }
 }
 
 void Client::move_down(bool extend_selection) {
     OpenedFile& working_file = opened_files[current_file];
     
-    if (extend_selection) {
-        if (!working_file.get_selection().has_selection()) {
-            working_file.start_selection();
-        }
-    } else {
+    if (!extend_selection && working_file.get_selection().has_selection()) {
+        int start_line, start_char, end_line, end_char;
+        working_file.get_selection().get_normalized_range(start_line, start_char, end_line, end_char);
+        working_file.set_current_line(end_line);
+        working_file.set_current_character(end_char);
         working_file.clear_selection();
+        return;
     }
     
-    // Move cursor down
+    if (extend_selection && !working_file.get_selection().has_selection()) {
+        working_file.start_selection();
+    }
+    
     if (working_file.get_current_line() < working_file.get_num_lines() - 1) {
+        int target_col = working_file.get_current_character_index();
         working_file.set_current_line(working_file.get_current_line() + 1);
-        working_file.set_current_character(std::min(working_file.get_current_character_index(), 
-                                                   working_file.get_num_characters(working_file.get_current_line())));
-    } else {
-        // Already at bottom: Go to end of line
-        working_file.set_current_character(working_file.get_num_characters(working_file.get_current_line()));
-    }
-    
-    if (extend_selection) {
-        working_file.update_selection();
+        int max_col = working_file.get_num_characters(working_file.get_current_line());
+        working_file.set_current_character(std::min(target_col, max_col));
+        
+        if (extend_selection) {
+            working_file.update_selection();
+        } else {
+            working_file.clear_selection();
+        }
     }
 }
 
 void Client::jump_left(bool extend_selection) {
     OpenedFile& working_file = opened_files[current_file];
     
+    if (!extend_selection && working_file.get_selection().has_selection()) {
+        int start_line, start_char, end_line, end_char;
+        working_file.get_selection().get_normalized_range(start_line, start_char, end_line, end_char);
+        working_file.set_current_line(start_line);
+        working_file.set_current_character(start_char);
+        working_file.clear_selection();
+        return;
+    }
+    
     if (extend_selection && !working_file.get_selection().has_selection()) {
         working_file.start_selection();
     }
     
-    const std::wstring& line_contents = working_file.get_current_line_contents();
-    int char_index = working_file.get_current_character_index();
+    int line = working_file.get_current_line();
+    int pos = working_file.get_current_character_index();
     
-    // Skip trailing spaces
-    while (char_index > 0 && line_contents[char_index - 1] == L' ') {
-        --char_index;
+    if (pos == 0 && line > 0) {
+        // Jump to end of previous line
+        line--;
+        pos = working_file.get_num_characters(line);
+    } else {
+        const std::wstring& line_str = working_file.get_current_line_contents();
+        // Skip back over non-word chars
+        while (pos > 0 && !this->is_word_char(line_str[pos - 1])) {
+            pos--;
+        }
+        // Skip back over word chars
+        while (pos > 0 && this->is_word_char(line_str[pos - 1])) {
+            pos--;
+        }
     }
     
-    // Skip to start of word
-    while (char_index > 0 && line_contents[char_index - 1] != L' ') {
-        --char_index;
-    }
-    
-    working_file.set_current_character(char_index);
+    working_file.set_current_line(line);
+    working_file.set_current_character(pos);
     
     if (extend_selection) {
         working_file.update_selection();
@@ -224,30 +269,51 @@ void Client::jump_left(bool extend_selection) {
 void Client::jump_right(bool extend_selection) {
     OpenedFile& working_file = opened_files[current_file];
     
+    if (!extend_selection && working_file.get_selection().has_selection()) {
+        int start_line, start_char, end_line, end_char;
+        working_file.get_selection().get_normalized_range(start_line, start_char, end_line, end_char);
+        working_file.set_current_line(end_line);
+        working_file.set_current_character(end_char);
+        working_file.clear_selection();
+        return;
+    }
+    
     if (extend_selection && !working_file.get_selection().has_selection()) {
         working_file.start_selection();
     }
     
-    const std::wstring& line_contents = working_file.get_current_line_contents();
-    int char_index = working_file.get_current_character_index();
+    int line = working_file.get_current_line();
+    int pos = working_file.get_current_character_index();
+    int line_len = working_file.get_num_characters(line);
     
-    // Skip leading spaces
-    while (char_index < working_file.get_num_characters(working_file.get_current_line()) && line_contents[char_index] == L' ') {
-        ++char_index;
+    if (pos == line_len && line < working_file.get_num_lines() - 1) {
+        // Jump to start of next line
+        line++;
+        pos = 0;
+    } else {
+        const std::wstring& line_str = working_file.get_current_line_contents();
+        // Skip forward over word chars
+        while (pos < line_len && this->is_word_char(line_str[pos])) {
+            pos++;
+        }
+        // Skip forward over non-word chars
+        while (pos < line_len && !this->is_word_char(line_str[pos])) {
+            pos++;
+        }
     }
     
-    // Skip to end of word
-    while (char_index < working_file.get_num_characters(working_file.get_current_line()) && line_contents[char_index] != L' ') {
-        ++char_index;
-    }
-    
-    working_file.set_current_character(char_index);
+    working_file.set_current_line(line);
+    working_file.set_current_character(std::min(pos, line_len));
     
     if (extend_selection) {
         working_file.update_selection();
     } else {
         working_file.clear_selection();
     }
+}
+
+bool Client::is_word_char(wchar_t ch) {
+    return iswalnum(ch) || ch == L'_';
 }
 
 void Client::delete_group() {
@@ -401,7 +467,11 @@ void Client::draw(Graphics* g) {
     }
     const OpenedFile& file = opened_files[current_file];
 
-    file.draw(g, 0, 0, 80, 40);
+    // Use dynamic values based on window size and config
+    int max_lines = client_height / static_cast<int>(Config::get_instance()->get_font_size() * 1.25f);
+    int max_chars_per_line = (client_width - static_cast<int>(Config::get_instance()->get_left_margin() + Config::get_instance()->get_explorer_width())) / static_cast<int>(Config::get_instance()->get_font_size() * 0.6f);
+
+    file.draw(g, 0, 0, max_chars_per_line, max_lines);
 }
 
 void Client::save_file(int file_id) const {
@@ -440,4 +510,8 @@ void Client::end_autosave() {
 
 void Client::autosave() {
     save_file();
+}
+
+OpenedFile& Client::get_working_file() {
+    return opened_files[current_file];
 }
