@@ -2,6 +2,9 @@
 #include "command_controller.h"
 #include "config.h"
 #include "graphics.h"
+#include "sync_client.h"
+
+#include <thread>
 
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -79,6 +82,7 @@ int CALLBACK WinMain(
 	MSG msg;
 	BOOL gResult;
 
+	// Thread that updates the local version of the file with the remote version
 	Client::get_instance()->begin_autosave();
 	
 	#pragma GCC diagnostic push

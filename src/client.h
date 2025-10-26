@@ -1,9 +1,14 @@
 #pragma once
 
+#include <winsock2.h>
+
+#include "diff_match_patch.h"
 #include "graphics.h"
 #include "opened_file.h"
+#include "sync_client.h"
 
 #include <iostream>
+#include <mutex>
 #include <unordered_set>
 #include <vector>
 
@@ -73,4 +78,12 @@ private:
     void autosave();
 
     HANDLE autosave_timer;
+
+    // Object to compare files
+    diff_match_patch diff; 
+
+    // Obejct to write to files
+    Syncer syncer;
+
+    std::mutex mut;
 };

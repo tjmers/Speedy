@@ -65,6 +65,10 @@ public:
     inline int get_num_characters(int line_number = -1) const { if (line_number == -1) line_number = current_line; return static_cast<int>(lines[line_number].size()); }
     inline void set_current_line(int line) { current_line = line; }
     inline void set_current_character(int character) { current_character = character; }
+    inline void set_line(const std::wstring& str) { lines[current_line] = str; }
+    inline void set_line(std::wstring&& str) { lines[current_line] = std::move(str); }
+    inline void set_lines(const std::vector<std::wstring>& new_lines) { lines = new_lines; }
+    inline void set_lines(std::vector<std::wstring>&& new_lines) { lines = std::move(new_lines); }
 
 
     /// @brief Draws the contents of the opened file using the provided Graphics object.

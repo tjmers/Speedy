@@ -1,6 +1,25 @@
 #include "client.h"
 
+#include <codecvt>
+#include <locale>
+#include <sstream>
+
 std::unordered_set<char> Client::insertable_characters;
+
+
+std::vector<std::wstring> splitStringToWStringVector(const std::string& input) {
+    std::vector<std::wstring> result;
+    std::istringstream ss(input);
+    std::string line;
+
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+
+    while (std::getline(ss, line, '\n')) {
+        result.push_back(converter.from_bytes(line));
+    }
+
+    return result;
+}
 
 void Client::init() {
     // Initialize the insertable_characters set
@@ -48,13 +67,18 @@ Client* Client::instance = nullptr;
     
 
 Client::Client()
-    : opened_files{}, current_file(-1), autosave_timer(NULL) {}
+    : opened_files{}, current_file(-1), autosave_timer(NULL), diff(), syncer("3.95.174.32", 8080, ""), mut() {}
 
 Client::~Client() {}
 
 bool Client::open_file(const std::string& file_path) {
     opened_files.push_back(OpenedFile(file_path));
     current_file = static_cast<int>(opened_files.size()) - 1;
+    
+    // Add to the syncer
+    std::string file_data = syncer.set_file(file_path);
+    std::vector<std::wstring> lines = splitStringToWStringVector(file_data);
+    opened_files[current_file].set_lines(std::move(lines));
     return opened_files[current_file].is_open();
 }
 
@@ -212,7 +236,7 @@ void Client::begin_autosave() {
         },
         this,
         0,
-        500, // Autosave delay in MS
+        1000, // Autosave delay in MS
         WT_EXECUTEDEFAULT
     );
 #pragma GCC diagnostic pop
@@ -224,6 +248,56 @@ void Client::end_autosave() {
     }
 }
 
+
 void Client::autosave() {
-    save_file();
+    // std::cout << "STARTING AUTOSAVE\n";
+    // // Get the differences between the two files
+    // // Iterate through each line and add to a std::string
+    std::string working;
+
+    // std::cout << "Part 1\n";
+    // // Convert the current working files lines into a std::string
+    OpenedFile& of = opened_files[current_file];
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    for (int line_number = 0; line_number < of.get_num_lines(); ++line_number) {
+        of.set_current_line(line_number);
+        working.append(converter.to_bytes(of.get_current_line_contents()));
+    }
+    syncer.write_to_remote(working);
+    std::string remote;
+    if (syncer.update_from_remote(remote)) {
+        of.set_lines(splitStringToWStringVector(remote));
+    }
+    // std::string remote;
+    // if (syncer.update_from_remote(remote)) {
+    //     std::cout << "Part 0\n";
+    //     // Save the line that was on before
+    //     int selected_line = of.get_current_line();
+    
+    
+    
+    //     std::vector<Diff> diffs = diff.diff_main(working, remote);
+    //     remote = diff.diff_text2(diffs); // gives text2 with diffs applied
+    //     if (remote[remote.size() - 1] != '\0') remote.push_back(0);
+    
+    
+    //     // Remote is now the version that is to be used
+    //     OpenedFile new_file(of);
+    
+    //     std::cout << "Part 2\n";
+    //     of.set_lines(splitStringToWStringVector(remote));
+    //     of.set_current_line(selected_line);
+        
+    //     // Update the remote with remote
+    //     std::cout << "Attempting to write " << remote << " to remote\n";
+    //     syncer.write_to_remote(remote);
+    
+    //     std::cout << "Part 3\n";
+    // } else {
+    //     std::cout << "Did not read. Writing: " << working << " to remote\n";
+    //     syncer.write_to_remote(working);
+    // }
+    
+    
+
 }

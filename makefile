@@ -1,7 +1,7 @@
 # Compiler and flags
 CXX := g++
-CXXFLAGS := -Wall -Wextra -std=c++23
-LDFLAGS := -ld2d1 -ldwrite
+CXXFLAGS := -Wall -Wextra -std=c++23 -I"C:\Users\jacob_\Downloads\boost_1_89_0\boost_1_89_0"
+LDFLAGS := -ld2d1 -ldwrite -lws2_32
 
 # Directories
 SRC_DIR := src
