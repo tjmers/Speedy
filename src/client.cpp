@@ -461,6 +461,42 @@ void Client::select_all() {
     working_file.update_selection();
 }
 
+void Client::format_bold() {
+    OpenedFile& working_file = opened_files[current_file];
+    if (working_file.get_selection().has_selection()) {
+        working_file.apply_formatting(FormatType::BOLD);
+        // Force a redraw
+        InvalidateRect(GetActiveWindow(), NULL, TRUE);
+    }
+}
+
+void Client::format_italic() {
+    OpenedFile& working_file = opened_files[current_file];
+    if (working_file.get_selection().has_selection()) {
+        working_file.apply_formatting(FormatType::ITALIC);
+        // Force a redraw
+        InvalidateRect(GetActiveWindow(), NULL, TRUE);
+    }
+}
+
+void Client::format_underline() {
+    OpenedFile& working_file = opened_files[current_file];
+    if (working_file.get_selection().has_selection()) {
+        working_file.apply_formatting(FormatType::UNDERLINE);
+        // Force a redraw
+        InvalidateRect(GetActiveWindow(), NULL, TRUE);
+    }
+}
+
+void Client::format_highlight() {
+    OpenedFile& working_file = opened_files[current_file];
+    if (working_file.get_selection().has_selection()) {
+        working_file.apply_formatting(FormatType::HIGHLIGHT);
+        // Force a redraw
+        InvalidateRect(GetActiveWindow(), NULL, TRUE);
+    }
+}
+
 void Client::draw(Graphics* g) {
     if (current_file == -1) {
         return;

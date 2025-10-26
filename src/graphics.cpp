@@ -120,3 +120,30 @@ void Graphics::DrawString(const wchar_t* str, int str_len, float x, float y, flo
 {
     render_target->DrawText(str, str_len, text_format, D2D1::RectF(x, y, x + width, y + height), brush);
 }
+
+void Graphics::DrawFormattedString(const wchar_t* str, int str_len, float x, float y, float width, float height, const std::vector<FormatRange>& formatting)
+{
+    // For now, just draw the text normally - we'll add formatting support later
+    DrawString(str, str_len, x, y, width, height);
+    
+    // Draw highlights on top
+    if (!formatting.empty()) {
+        std::string font_family = Config::get_instance()->get_font_family();
+        std::wstring w_font_family(font_family.begin(), font_family.end());
+        FLOAT font_size = Config::get_instance()->get_font_size();
+        float char_width = font_size * 0.6f;
+        
+        // Draw highlights
+        for (const auto& range : formatting) {
+            if (range.type == FormatType::HIGHLIGHT && range.start_char < str_len) {
+                float highlight_x = x + range.start_char * char_width;
+                int end_char = std::min(range.end_char, str_len);
+                float highlight_width = (end_char - range.start_char) * char_width;
+                
+                // Set yellow highlight color
+                SetColor(D2D1::ColorF(D2D1::ColorF::Yellow, 0.3f));
+                FillRect(highlight_x, y, highlight_width, height);
+            }
+        }
+    }
+}

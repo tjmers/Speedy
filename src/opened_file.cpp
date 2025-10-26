@@ -153,6 +153,28 @@ void OpenedFile::delete_selection() {
     clear_selection();
 }
 
+void OpenedFile::apply_formatting(FormatType type) {
+    if (!selection.has_selection()) return;
+    
+    int start_line, start_char, end_line, end_char;
+    selection.get_normalized_range(start_line, start_char, end_line, end_char);
+    
+    formatting_manager.add_formatting(start_line, start_char, end_line, end_char, type);
+}
+
+std::vector<FormatRange> OpenedFile::get_line_formatting(int line) const {
+    std::vector<FormatRange> result;
+    
+    // Get all formatting ranges that intersect with this line
+    for (const auto& range : formatting_manager.get_all_ranges()) {
+        if (range.start_line <= line && range.end_line >= line) {
+            result.push_back(range);
+        }
+    }
+    
+    return result;
+}
+
 // Edit methods
 void OpenedFile::new_line(int line_number, int character_position, bool move_cursor) {
     if (line_number == -1) {
@@ -464,13 +486,31 @@ void OpenedFile::draw(Graphics* g, int start_x, int start_y, int max_chars_per_l
         
         // Draw text
         g->SetColor(Config::get_instance()->get_text_color());
+        
+        // Get formatting for this line
+        auto line_formatting = get_line_formatting(i);
+        
         if (start_x > 0 || start_x + max_chars_per_line < static_cast<int>(line.length())) {
             std::wstring substringed_line = line.substr(start_x, max_chars_per_line);
-            g->DrawString(substringed_line.c_str(), static_cast<int>(substringed_line.length()), 
-                         static_cast<float>(start_x), line_y, 800.0f, static_cast<float>(line_height));
+            
+            // Adjust formatting ranges for substring
+            std::vector<FormatRange> adjusted_formatting;
+            for (const auto& range : line_formatting) {
+                if (range.start_line == i && range.end_line == i) {
+                    // Single line range - adjust for substring
+                    int adj_start = std::max(0, range.start_char - start_x);
+                    int adj_end = std::min(max_chars_per_line, range.end_char - start_x);
+                    if (adj_start < adj_end) {
+                        adjusted_formatting.emplace_back(i, adj_start, i, adj_end, range.type);
+                    }
+                }
+            }
+            
+            g->DrawFormattedString(substringed_line.c_str(), static_cast<int>(substringed_line.length()), 
+                                 static_cast<float>(start_x), line_y, 800.0f, static_cast<float>(line_height), adjusted_formatting);
         } else {
-            g->DrawString(line.c_str(), static_cast<int>(line.length()), x, line_y, 
-                         800.0f, static_cast<float>(line_height));
+            g->DrawFormattedString(line.c_str(), static_cast<int>(line.length()), x, line_y, 
+                                 800.0f, static_cast<float>(line_height), line_formatting);
         }
     }
 

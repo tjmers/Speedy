@@ -34,13 +34,15 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	if not exist "$(BUILD_DIR_WIN)" mkdir "$(BUILD_DIR_WIN)"
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-
 # ===== Test build =====
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)
 
-$(TEST_TARGET): $(OBJS) $(TEST_OBJS)
-	$(CXX) $(OBJS) $(TEST_OBJS) -o $@ $(LDFLAGS)
+# Filter out speedy.o from OBJS for test compilation (since it has main())
+TEST_LINK_OBJS := $(filter-out $(BUILD_DIR)/speedy.o, $(OBJS))
+
+$(TEST_TARGET): $(TEST_LINK_OBJS) $(TEST_OBJS)
+	$(CXX) $(TEST_LINK_OBJS) $(TEST_OBJS) -o $@ $(LDFLAGS)
 
 $(TEST_BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp
 	if not exist "$(TEST_BUILD_DIR_WIN)" mkdir "$(TEST_BUILD_DIR_WIN)"
@@ -49,6 +51,6 @@ $(TEST_BUILD_DIR)/%.o: $(TEST_DIR)/%.cpp
 # Clean up
 clean:
 	del /Q $(BUILD_DIR)\*.o $(TEST_BUILD_DIR)\*.o $(TARGET) $(TEST_TARGET) 2>nul || exit 0
-	del config/speedy.cfg config/commands.cfg
+	del config\speedy.cfg config\commands.cfg 2>nul || exit 0
 
 .PHONY: all clean test

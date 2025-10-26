@@ -7,6 +7,7 @@
 #include "edit.h"
 #include "graphics.h"
 #include "selection.h"
+#include "formatting.h"
 
 class OpenedFile {
 public:
@@ -61,6 +62,9 @@ public:
     
     /// @brief Inserts text at current position, replacing selection if exists
     void insert_text(const std::wstring& text);
+    
+    /// @brief Applies formatting to the selected text
+    void apply_formatting(FormatType type);
 
     // Getters and setters
     inline int get_current_line() const { return current_line; }
@@ -78,6 +82,9 @@ public:
 
     /// @brief Draws the contents of the opened file using the provided Graphics object.
     void draw(Graphics* g, int start_x, int start_y, int max_chars_per_line, int max_lines) const;
+    
+    /// @brief Gets formatting for a specific line
+    std::vector<FormatRange> get_line_formatting(int line) const;
 
 private:
     std::string file_path;
@@ -88,4 +95,5 @@ private:
     std::deque<Edit> past_actions;
     std::deque<Edit> past_undos;
     Selection selection;
+    FormattingManager formatting_manager;
 };

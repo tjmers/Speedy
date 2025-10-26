@@ -45,6 +45,12 @@ public:
     void cut(HWND hwnd);
     void paste(HWND hwnd);
     void select_all();
+    
+    // Text formatting methods
+    void format_bold();
+    void format_italic();
+    void format_underline();
+    void format_highlight();
 
     void draw(Graphics* g);
     void save_file(int file_id = -1) const;

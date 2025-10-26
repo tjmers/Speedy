@@ -156,6 +156,14 @@ bool CommandController::load_commands() {
                 });
             } else if (action_name == "SELECT_ALL") {
                 action_functions.push_back([this](){this->client->select_all();});
+            } else if (action_name == "FORMAT_BOLD") {
+                action_functions.push_back([this](){this->client->format_bold();});
+            } else if (action_name == "FORMAT_ITALIC") {
+                action_functions.push_back([this](){this->client->format_italic();});
+            } else if (action_name == "FORMAT_UNDERLINE") {
+                action_functions.push_back([this](){this->client->format_underline();});
+            } else if (action_name == "FORMAT_HIGHLIGHT") {
+                action_functions.push_back([this](){this->client->format_highlight();});
             }
         }
 
@@ -365,6 +373,36 @@ void CommandController::get_default_commands() {
                 }
             }
         }
+    );
+    
+    // Text formatting commands
+    commands.emplace_back(
+        "Format Bold",
+        "Makes selected text bold",
+        "FORMAT_BOLD",
+        std::vector<char>({VK_CONTROL, 'B'}),
+        [this] () {this->client->format_bold();}
+    );
+    commands.emplace_back(
+        "Format Italic",
+        "Makes selected text italic",
+        "FORMAT_ITALIC",
+        std::vector<char>({VK_CONTROL, 'I'}),
+        [this] () {this->client->format_italic();}
+    );
+    commands.emplace_back(
+        "Format Underline",
+        "Makes selected text underlined",
+        "FORMAT_UNDERLINE",
+        std::vector<char>({VK_CONTROL, 'U'}),
+        [this] () {this->client->format_underline();}
+    );
+    commands.emplace_back(
+        "Format Highlight",
+        "Highlights selected text with yellow background",
+        "FORMAT_HIGHLIGHT",
+        std::vector<char>({VK_CONTROL, VK_SHIFT, 'H'}),
+        [this] () {this->client->format_highlight();}
     );
 }
 
