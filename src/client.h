@@ -1,83 +1,71 @@
-#pragma once
+#ifndef CLIENT_H
+#define CLIENT_H
 
 #include <winsock2.h>
 
 #include "diff_match_patch.h"
-#include "graphics.h"
-#include "opened_file.h"
+#include <windows.h>
 #include "sync_client.h"
 
-#include <iostream>
+#include <cwctype>  // For iswalnum in is_word_char
+#include <vector> 
+#include <string>
 #include <mutex>
 #include <unordered_set>
-#include <vector>
 
+#include "config.h" // For Config
+#include "graphics.h"     // For Graphics*
+#include "opened_file.h"  // Assuming this includes Selection, Edit, etc.
 
 class Client {
-    
-public:
+private:
+    static Client* instance;
+    std::vector<OpenedFile> opened_files;
+    int current_file;
+    HANDLE autosave_timer;
 
+    static std::unordered_set<char> insertable_characters;
+
+public:
     static void init();
     static void cleanup();
     static Client* get_instance();
-    
-    /// @brief Constructs a new Client object.
-private:
-    Client(); // Prevent instantiation
-public:
-    
-    /// @brief Destroys the Client object and releases any allocated resources.
+
+    Client();
     ~Client();
-    
-    /// @brief adds it to the list of opened files and selects it as the current file.
+
     bool open_file(const std::string& file_path);
-    
-    /// @brief Processes a character input from the user.
-    /// @param character the character to process.
     void process_character(const char character);
 
-
-    /// @brief Saves the current file.
-    void CALLBACK save_file(int file_id = -1) const;
-
-    /// @brief Closes the specified file and removes it from the list of opened files.
-    /// @param file_id The unique identifier of the file to close.
-    void close_file(int file_id = -1);
-
-    /// @brief Draws the current state of the client using the provided Graphics object.
-    /// @param g the Graphics object used for drawing.
-    void draw(Graphics* g); // Implementation for drawing the client state can be added here.
-
-    inline OpenedFile& get_working_file() { return opened_files[current_file]; }
-
-    void move_left();
-    void move_right();
-    void move_up();
-    void move_down();
-    void jump_left();
-    void jump_right();
+    void move_left(bool extend_selection = false);
+    void move_right(bool extend_selection = false);
+    void move_up(bool extend_selection = false);
+    void move_down(bool extend_selection = false);
+    void jump_left(bool extend_selection = false);
+    void jump_right(bool extend_selection = false);
+    bool is_word_char(wchar_t ch);  // Declaration for word character check
 
     void delete_group();
+    void copy(HWND hwnd);
+    void cut(HWND hwnd);
+    void paste(HWND hwnd);
+    void select_all();
+    
+    // Text formatting methods
+    void format_bold();
+    void format_italic();
+    void format_underline();
+    void format_highlight();
+
+    void draw(Graphics* g);
+    void save_file(int file_id = -1) const;
+    void close_file(int file_id = -1);
 
     void begin_autosave();
     void end_autosave();
-
-private:
-
-
-    static Client* instance;
-
-
-    /// @brief The list of opened files.
-    std::vector<OpenedFile> opened_files;
-
-    /// @brief The index of the currently active file in the opened_files vector.
-    int current_file;
-
-    static std::unordered_set<char> insertable_characters;
     void autosave();
 
-    HANDLE autosave_timer;
+    OpenedFile& get_working_file();
 
     // Object to compare files
     diff_match_patch diff; 
@@ -87,3 +75,5 @@ private:
 
     std::mutex mut;
 };
+
+#endif // CLIENT_H

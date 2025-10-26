@@ -8,6 +8,7 @@
 constexpr int STARTING_SCREEN_WIDTH = 1080;
 constexpr int STARTING_SCREEN_HEIGHT = 720;
 #include <dwrite.h>
+#include "formatting.h"
 
 class Graphics
 {
@@ -34,4 +35,5 @@ public:
     void FillRect(float x, float y, float width, float height);
     void FillRect(const D2D1_RECT_F& rect);
     void DrawString(const wchar_t* string, int str_len, float x, float y, float width, float height);
+    void DrawFormattedString(const wchar_t* string, int str_len, float x, float y, float width, float height, const std::vector<FormatRange>& formatting);
 };

@@ -30,6 +30,26 @@ bool CommandController::run_commands() const {
         down[i] = key_state[i] & 0x80;
     }
     
+    // Map VK_LSHIFT and VK_RSHIFT to VK_SHIFT for easier matching
+    if (down[VK_LSHIFT] || down[VK_RSHIFT]) {
+        down[VK_SHIFT] = true;
+        down[VK_LSHIFT] = false;  // Clear the left/right shift keys so they don't interfere
+        down[VK_RSHIFT] = false;
+    }
+    // Map VK_LCONTROL and VK_RCONTROL to VK_CONTROL for easier matching
+    if (down[VK_LCONTROL] || down[VK_RCONTROL]) {
+        down[VK_CONTROL] = true;
+        down[VK_LCONTROL] = false;  // Clear the left/right control keys
+        down[VK_RCONTROL] = false;
+    }
+    // Map VK_LMENU and VK_RMENU to VK_MENU for easier matching
+    if (down[VK_LMENU] || down[VK_RMENU]) {
+        down[VK_MENU] = true;
+        down[VK_LMENU] = false;  // Clear the left/right alt 
+        // keys
+        down[VK_RMENU] = false;
+    }
+    
     for (const Command& c : commands) {
         if (c.get_key_requirements() == down) {
             c.execute();
@@ -107,44 +127,87 @@ bool CommandController::load_commands() {
                 iss >> next_token;
                 int file_id = std::stoi(next_token);
                 action_functions.push_back([this, file_id](){this->client->close_file(file_id);});
-            } else {
-                // Log info here
+            } else if (action_name == "SELECT_LEFT") {
+                action_functions.push_back([this](){this->client->move_left(true);});
+            } else if (action_name == "SELECT_RIGHT") {
+                action_functions.push_back([this](){this->client->move_right(true);});
+            } else if (action_name == "SELECT_UP") {
+                action_functions.push_back([this](){this->client->move_up(true);});
+            } else if (action_name == "SELECT_DOWN") {
+                action_functions.push_back([this](){this->client->move_down(true);});
+            } else if (action_name == "SELECT_WORD_LEFT") {
+                action_functions.push_back([this](){this->client->jump_left(true);});
+            } else if (action_name == "SELECT_WORD_RIGHT") {
+                action_functions.push_back([this](){this->client->jump_right(true);});
+            } else if (action_name == "COPY") {
+                action_functions.push_back([this](){
+                    HWND hwnd = GetActiveWindow();
+                    this->client->copy(hwnd);
+                });
+            } else if (action_name == "CUT") {
+                action_functions.push_back([this](){
+                    HWND hwnd = GetActiveWindow();
+                    this->client->cut(hwnd);
+                });
+            } else if (action_name == "PASTE") {
+                action_functions.push_back([this](){
+                    HWND hwnd = GetActiveWindow();
+                    this->client->paste(hwnd);
+                });
+            } else if (action_name == "SELECT_ALL") {
+                action_functions.push_back([this](){this->client->select_all();});
+            } else if (action_name == "FORMAT_BOLD") {
+                action_functions.push_back([this](){this->client->format_bold();});
+            } else if (action_name == "FORMAT_ITALIC") {
+                action_functions.push_back([this](){this->client->format_italic();});
+            } else if (action_name == "FORMAT_UNDERLINE") {
+                action_functions.push_back([this](){this->client->format_underline();});
+            } else if (action_name == "FORMAT_HIGHLIGHT") {
+                action_functions.push_back([this](){this->client->format_highlight();});
             }
         }
-        commands.emplace_back(command_name, description, actions, get_bools_from_string(key_reqs), [action_functions](){for (const auto& f : action_functions)f();});
+
+        // Combine actions into single lambda
+        std::function<void()> command_action = [action_functions = std::move(action_functions)]() {
+            for (const auto& f : action_functions) {
+                f();
+            }
+        };
+
+        std::array<bool, 256> key_req = get_bools_from_string(key_reqs);
+        commands.emplace_back(command_name, description, actions, key_req, command_action);
     }
 
+    commands_file.close();
     return true;
-
 }
 
 void CommandController::get_default_commands() {
-
-    // Arrow Keys
+    // Movement commands
     commands.emplace_back(
         "Move Left",
-        "Moves the cursor to the left by one character, or up a line if at the beginning",
+        "Moves the cursor left one character",
         "CHAR_LEFT",
         std::vector<char>({VK_LEFT}),
         [this] () {this->client->move_left();}
     );
     commands.emplace_back(
         "Move Right",
-        "Moves the cursor to the right by one character, or down a line if at the end",
+        "Moves the cursor right one character",
         "CHAR_RIGHT",
         std::vector<char>({VK_RIGHT}),
         [this] () {this->client->move_right();}
     );
     commands.emplace_back(
         "Move Up",
-        "Moves the cursor up a line",
+        "Moves the cursor up one line",
         "CHAR_UP",
         std::vector<char>({VK_UP}),
         [this] () {this->client->move_up();}
     );
     commands.emplace_back(
         "Move Down",
-        "Moves the cursor down a line",
+        "Moves the cursor down one line",
         "CHAR_DOWN",
         std::vector<char>({VK_DOWN}),
         [this] () {this->client->move_down();}
@@ -201,6 +264,145 @@ void CommandController::get_default_commands() {
         "CLOSE_FILE -1",
         std::vector<char>{VK_CONTROL, 'W'},
         [this] () {this->client->close_file();}
+    );
+    // Arrow Keys with Shift for selection
+    commands.emplace_back(
+        "Select Left",
+        "Extends selection to the left",
+        "SELECT_LEFT",
+        std::vector<char>({VK_LEFT, VK_SHIFT}),
+        [this] () {this->client->move_left(true);}
+    );
+    commands.emplace_back(
+        "Select Right",
+        "Extends selection to the right",
+        "SELECT_RIGHT",
+        std::vector<char>({VK_RIGHT, VK_SHIFT}),
+        [this] () {this->client->move_right(true);}
+    );
+    commands.emplace_back(
+        "Select Up",
+        "Extends selection upward",
+        "SELECT_UP",
+        std::vector<char>({VK_UP, VK_SHIFT}),
+        [this] () {this->client->move_up(true);}
+    );
+    commands.emplace_back(
+        "Select Down",
+        "Extends selection downward",
+        "SELECT_DOWN",
+        std::vector<char>({VK_DOWN, VK_SHIFT}),
+        [this] () {this->client->move_down(true);}
+    );
+    
+    // Ctrl+Shift+Arrow for word selection
+    commands.emplace_back(
+        "Select Word Left",
+        "Extends selection to the previous word",
+        "SELECT_WORD_LEFT",
+        std::vector<char>({VK_LEFT, VK_CONTROL, VK_SHIFT}),
+        [this] () {this->client->jump_left(true);}
+    );
+    commands.emplace_back(
+        "Select Word Right",
+        "Extends selection to the next word",
+        "SELECT_WORD_RIGHT",
+        std::vector<char>({VK_RIGHT, VK_CONTROL, VK_SHIFT}),
+        [this] () {this->client->jump_right(true);}
+    );
+    
+    // Copy, Cut, Paste
+    commands.emplace_back(
+        "Copy",
+        "Copies selected text to clipboard",
+        "COPY",
+        std::vector<char>({VK_CONTROL, 'C'}),
+        [this] () {
+            HWND hwnd = GetActiveWindow();
+            this->client->copy(hwnd);
+        }
+    );
+    commands.emplace_back(
+        "Cut",
+        "Cuts selected text to clipboard",
+        "CUT",
+        std::vector<char>({VK_CONTROL, 'X'}),
+        [this] () {
+            HWND hwnd = GetActiveWindow();
+            this->client->cut(hwnd);
+        }
+    );
+    commands.emplace_back(
+        "Paste",
+        "Pastes text from clipboard",
+        "PASTE",
+        std::vector<char>({VK_CONTROL, 'V'}),
+        [this] () {
+            HWND hwnd = GetActiveWindow();
+            this->client->paste(hwnd);
+        }
+    );
+    
+    // Select All
+    commands.emplace_back(
+        "Select All",
+        "Selects all text in the document",
+        "SELECT_ALL",
+        std::vector<char>({VK_CONTROL, 'A'}),
+        [this] () {this->client->select_all();}
+    );
+    
+    // Delete key
+    commands.emplace_back(
+        "Delete",
+        "Deletes the character at cursor or selected text",
+        "DELETE",
+        std::vector<char>({VK_DELETE}),
+        [this] () {
+            OpenedFile& file = this->client->get_working_file();
+            if (file.get_selection().has_selection()) {
+                file.delete_selection();
+            } else {
+                int line = file.get_current_line();
+                int pos = file.get_current_character_index();
+                if (pos < file.get_num_characters(line)) {
+                    file.delete_character(line, pos + 1, false);
+                } else if (line < file.get_num_lines() - 1) {
+                    // Delete newline - merge with next line
+                    file.delete_character(line + 1, 0, false);
+                }
+            }
+        }
+    );
+    
+    // Text formatting commands
+    commands.emplace_back(
+        "Format Bold",
+        "Makes selected text bold",
+        "FORMAT_BOLD",
+        std::vector<char>({VK_CONTROL, 'B'}),
+        [this] () {this->client->format_bold();}
+    );
+    commands.emplace_back(
+        "Format Italic",
+        "Makes selected text italic",
+        "FORMAT_ITALIC",
+        std::vector<char>({VK_CONTROL, 'I'}),
+        [this] () {this->client->format_italic();}
+    );
+    commands.emplace_back(
+        "Format Underline",
+        "Makes selected text underlined",
+        "FORMAT_UNDERLINE",
+        std::vector<char>({VK_CONTROL, 'U'}),
+        [this] () {this->client->format_underline();}
+    );
+    commands.emplace_back(
+        "Format Highlight",
+        "Highlights selected text with yellow background",
+        "FORMAT_HIGHLIGHT",
+        std::vector<char>({VK_CONTROL, VK_SHIFT, 'H'}),
+        [this] () {this->client->format_highlight();}
     );
 }
 

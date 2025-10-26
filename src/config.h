@@ -60,12 +60,16 @@ public:
     inline int get_undo_history_size() const { return undo_history_size; }
     inline void set_undo_history_size(const int size) { undo_history_size = size; }
 
+    // Selection highlight color
+    inline D2D1::ColorF get_selection_color() const { return selection_color; }
+    inline void set_selection_color(const D2D1::ColorF& color) { selection_color = color; }
+
 private:
     Config(); // Private constructor to prevent instantiation.
 
     static Config* instance; // Static instance pointer.
 
-    // Properties
+    // Properties (declaration order for init matching)
     D2D1::ColorF background_color;
     float line_spacing;
     float character_spacing;
@@ -85,4 +89,5 @@ private:
     std::string working_directory;
 
     int undo_history_size;
+    D2D1::ColorF selection_color;  // For text selection highlights
 };
