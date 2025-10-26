@@ -582,6 +582,9 @@ void Client::autosave() {
     for (int line_number = 0; line_number < of.get_num_lines(); ++line_number) {
         of.set_current_line(line_number);
         working.append(converter.to_bytes(of.get_current_line_contents()));
+        if (line_number != of.get_num_lines() - 1) {
+            working.push_back('\n');
+        }
     }
     syncer.write_to_remote(working);
     std::string remote;

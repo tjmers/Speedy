@@ -74,11 +74,12 @@ public:
     inline int get_num_lines() const { return static_cast<int>(lines.size()); }
     inline int get_num_characters(int line_number = -1) const { 
         if (line_number == -1) line_number = current_line; 
-        return static_cast<int>(lines[line_number].size()); 
+        return static_cast<int>(lines[line_number].size()) - static_cast<size_t>(line_number == lines.size() - 1); 
     }
     inline void set_current_line(int line) { current_line = line; }
     inline void set_current_character(int character) { current_character = character; }
-    inline const Selection& get_selection() const { return selection; }    inline void set_line(const std::wstring& str) { lines[current_line] = str; }
+    inline const Selection& get_selection() const { return selection; }    
+    inline void set_line(const std::wstring& str) { lines[current_line] = str; }
     inline void set_line(std::wstring&& str) { lines[current_line] = std::move(str); }
     inline void set_lines(const std::vector<std::wstring>& new_lines) { lines = new_lines; }
     inline void set_lines(std::vector<std::wstring>&& new_lines) { lines = std::move(new_lines); }
